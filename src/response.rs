@@ -15,6 +15,7 @@ pub enum Code {
   FrequencyLimited,
   TokenExpired,
   Forbidden,
+  TwoFactorAuth,
 }
 
 impl Code {
@@ -28,6 +29,7 @@ impl Code {
       Code::FrequencyLimited => get_translation(lang, "Comment too fast"),
       Code::TokenExpired => get_translation(lang, "TOKEN_EXPIRED"),
       Code::Forbidden => get_translation(lang, "FORBIDDEN"),
+      Code::TwoFactorAuth => get_translation(lang, "TWO_FACTOR_AUTH_ERROR_DETAIL"),
     }
   }
 }
@@ -59,6 +61,7 @@ impl<T> Response<T> {
       Code::FrequencyLimited => 1000,
       Code::TokenExpired => 1000,
       Code::Forbidden => 403,
+      Code::TwoFactorAuth => 1000,
     };
     Response {
       data: None,

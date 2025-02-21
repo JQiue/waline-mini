@@ -5,7 +5,6 @@ use actix_web::{
   web::{Data, Json, Path, Query},
   HttpRequest, HttpResponse,
 };
-use serde_json::json;
 
 use crate::{
   app::AppState,
@@ -93,11 +92,21 @@ pub async fn set_user_profile(
     url,
     password,
     avatar,
+    two_factor_auth,
   }) = body;
   match extract_token(&req) {
     Ok(token) => {
-      match service::set_user_profile(&state, token, display_name, label, url, password, avatar)
-        .await
+      match service::set_user_profile(
+        &state,
+        token,
+        display_name,
+        label,
+        url,
+        password,
+        avatar,
+        two_factor_auth,
+      )
+      .await
       {
         Ok(_) => HttpResponse::Ok().json(Response::<()>::success(None, None)),
         Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
@@ -153,30 +162,32 @@ pub async fn verification(state: Data<AppState>, query: Query<VerificationQuery>
   }
 }
 
-/// TODO set 2fa
 #[post("/token/2fa")]
-pub async fn set_2fa(state: Data<AppState>, body: Json<Set2faBody>) -> HttpResponse {
+pub async fn set_2fa(
+  req: HttpRequest,
+  state: Data<AppState>,
+  body: Json<Set2faBody>,
+) -> HttpResponse {
   let Json(Set2faBody { code, secret }) = body;
-  match service::set_2fa(&state, code, secret).await {
-    Ok(_) => HttpResponse::Ok().json(json!({
-      "errno": 1000,
-      "errmsg": "二步验证失败"
-    })),
-    Err(_) => HttpResponse::Ok().json(json!({
-      "errno": 1000,
-      "errmsg": "二步验证失败"
-    })),
+  match extract_token(&req) {
+    Ok(token) => match service::set_2fa(&state, token, code, secret).await {
+      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), None)),
+      Err(_) => HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, None)),
+    },
+    Err(_) => HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, None)),
   }
 }
 
 #[get("/token/2fa")]
-pub async fn get_2fa(state: Data<AppState>, query: Query<Get2faQuery>) -> HttpResponse {
+pub async fn get_2fa(
+  req: HttpRequest,
+  state: Data<AppState>,
+  query: Query<Get2faQuery>,
+) -> HttpResponse {
   let Query(Get2faQuery { lang, email }) = query;
-  match service::get_2fa(&state, email).await {
+  let token = extract_token(&req).map_or(None, |token| Some(token));
+  match service::get_2fa(&state, token, email).await {
     Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), Some(&lang))),
-    Err(_) => HttpResponse::Ok().json(json!({
-      "errno": 1000,
-      "errmsg": "二步验证失败"
-    })),
+    Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
   }
 }

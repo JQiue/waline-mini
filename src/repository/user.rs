@@ -35,4 +35,7 @@ impl<'a> UserRepository<'a> {
   pub async fn update_user(&self, user: wl_users::ActiveModel) -> Result<wl_users::Model, DbErr> {
     user.update(self.db).await
   }
+  pub async fn set_2fa(&self, user: wl_users::ActiveModel) -> Result<wl_users::Model, DbErr> {
+    user.update(self.db).await
+  }
 }
