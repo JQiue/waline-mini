@@ -46,6 +46,7 @@ instant-akismet = "=0.2.0"
 reqwest = { version = "=0.12.12", default-features = false, features = [
   "rustls-tls",
 ] }
+totp-rs = { version = "5.6.0", features = ["otpauth", "gen_secret"] }
 
 [features]
 default = []

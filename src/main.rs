@@ -11,6 +11,7 @@ mod error;
 mod helpers;
 mod locales;
 mod prelude;
+mod repository;
 mod response;
 mod traits;
 

@@ -31,6 +31,8 @@ pub struct SetUserProfileBody {
   pub url: Option<String>,
   pub password: Option<String>,
   pub avatar: Option<String>,
+  #[serde(rename = "2fa")]
+  pub two_factor_auth: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -80,7 +82,7 @@ pub async fn is_first_admin_user(id: u32, conn: &DatabaseConnection) -> Result<b
   }
 }
 
-pub async fn is_admin_user(email: String, conn: &DatabaseConnection) -> Result<bool, Code> {
+pub async fn is_admin_user(email: &str, conn: &DatabaseConnection) -> Result<bool, Code> {
   let user = wl_users::Entity::find()
     .filter(wl_users::Column::Email.eq(email))
     .filter(wl_users::Column::UserType.eq("administrator"))

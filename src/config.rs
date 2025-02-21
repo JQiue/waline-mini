@@ -3,6 +3,7 @@
 use serde::Deserialize;
 
 use crate::error::AppError;
+use serde::de::Deserializer;
 
 fn default_ipqps() -> u64 {
   60
@@ -18,6 +19,18 @@ fn default_comment_audit() -> bool {
 
 fn default_login() -> String {
   "no".to_string()
+}
+
+fn default_disable_authore_notify() -> bool {
+  false
+}
+
+fn deserialize_comma_separated<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+  D: Deserializer<'de>,
+{
+  let s: String = Deserialize::deserialize(deserializer)?;
+  Ok(s.split(',').map(|s| s.trim().to_string()).collect())
 }
 
 #[derive(Deserialize)]
@@ -41,6 +54,14 @@ pub struct EnvConfig {
   pub akismet_key: String,
   #[serde(default = "default_login")]
   pub login: String,
+  #[serde(default = "default_disable_authore_notify")]
+  pub disable_author_notify: bool,
+  #[serde(default, deserialize_with = "deserialize_comma_separated")]
+  pub disallow_ip_list: Vec<String>,
+  #[serde(default, deserialize_with = "deserialize_comma_separated")]
+  pub forbidden_words: Vec<String>,
+  #[serde(default, deserialize_with = "deserialize_comma_separated")]
+  pub secure_domians: Vec<String>,
 }
 
 impl EnvConfig {

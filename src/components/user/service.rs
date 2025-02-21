@@ -9,6 +9,7 @@ use sea_orm::{
   QueryFilter, QuerySelect, Set,
 };
 use serde_json::{json, Value};
+use totp_rs::{Secret, TOTP};
 
 use crate::{
   app::AppState,
@@ -116,7 +117,7 @@ pub async fn user_register(
 
 pub async fn user_login(
   state: &AppState,
-  _code: String,
+  code: String,
   email: String,
   password: String,
 ) -> Result<Value, Code> {
@@ -125,8 +126,18 @@ pub async fn user_login(
   if !result {
     return Err(Code::Error);
   }
-  let token =
-    helpers::jwt::sign(user.email.clone(), &state.jwt_token, 2592000).map_err(AppError::from)?;
+  let two_factor_auth_secret = user.two_factor_auth.clone();
+  if two_factor_auth_secret.is_some() {
+    let mut totp = TOTP::default();
+    let raw = Secret::Encoded(two_factor_auth_secret.unwrap())
+      .to_raw()
+      .unwrap();
+    totp.secret = raw.to_bytes().unwrap();
+    if !totp.check_current(&code).unwrap() {
+      return Err(Code::TwoFactorAuth);
+    }
+  }
+  let token = jwt::sign(user.email.clone(), &state.jwt_token, 2592000).map_err(AppError::from)?;
   let mail_md5 = helpers::hash::md5(user.email.as_bytes());
   let data = json!({
     "display_name": user.display_name,
@@ -186,6 +197,7 @@ pub async fn set_user_profile(
   url: Option<String>,
   password: Option<String>,
   avatar: Option<String>,
+  two_factor_auth: Option<String>,
 ) -> Result<bool, Code> {
   let email = jwt::verify::<String>(&token, &state.jwt_token)
     .map_err(AppError::from)?
@@ -210,6 +222,9 @@ pub async fn set_user_profile(
     let hashed = helpers::hash::bcrypt(&password).map_err(|_| Code::Error)?;
     active_user.password = Set(hashed);
   }
+  if let Some(two_factor_auth) = two_factor_auth {
+    active_user.two_factor_auth = Set(Some(two_factor_auth));
+  }
   let res = active_user.update(&state.conn).await;
   Ok(res.is_ok())
 }
@@ -224,7 +239,7 @@ pub async fn set_user_type(
     .map_err(|_| Code::Unauthorized)?
     .claims
     .data;
-  if is_admin_user(email.clone(), &state.conn).await? {
+  if is_admin_user(&email, &state.conn).await? {
     let mut active_user = get_user(UserQueryBy::Id(user_id), &state.conn)
       .await?
       .into_active_model();
@@ -302,30 +317,94 @@ pub async fn verification(state: &AppState, email: String, token: String) -> Res
   Err(Code::TokenExpired)
 }
 
-/// TODO set 2fa
-pub async fn set_2fa(_state: &AppState, _code: String, _secret: String) -> Result<bool, String> {
-  Err("todo".to_string())
-}
-
-pub async fn get_2fa(state: &AppState, email: Option<String>) -> Result<Value, Code> {
-  match email {
-    Some(email) => {
-      let user = wl_users::Entity::find()
-        .filter(wl_users::Column::Email.eq(email))
-        .filter(wl_users::Column::TwoFactorAuth.is_not_null())
-        .filter(wl_users::Column::TwoFactorAuth.ne(""))
-        .one(&state.conn)
+pub async fn set_2fa(
+  state: &AppState,
+  token: String,
+  code: String,
+  secret: String,
+) -> Result<Value, Code> {
+  let user_email = jwt::verify::<String>(&token, &state.jwt_token)
+    .map_err(AppError::from)?
+    .claims
+    .data;
+  let mut user = state
+    .repo
+    .user()
+    .get_user_by_email(&user_email)
+    .await
+    .map_err(AppError::from)?
+    .ok_or(AppError::UserNotFound)?
+    .into_active_model();
+  user.two_factor_auth = Set(Some(secret.clone()));
+  let mut totp = TOTP::default();
+  let raw = Secret::Encoded(secret.clone()).to_raw().unwrap();
+  totp.secret = raw.clone().to_bytes().unwrap();
+  if let Ok(check) = totp.check_current(&code) {
+    if check {
+      state
+        .repo
+        .user()
+        .set_2fa(user)
         .await
         .map_err(AppError::from)?;
-      match user {
-        Some(_) => Ok(json!({
-            "enable": true
-        })),
-        None => Ok(json!({
-            "enable": false
-        })),
-      }
+      return Ok(json!({}));
+    } else {
+      return Err(Code::TwoFactorAuth);
     }
-    None => Err(Code::Error),
+  } else {
+    return Err(Code::Error);
   }
+}
+
+pub async fn get_2fa(
+  state: &AppState,
+  token: Option<String>,
+  email: Option<String>,
+) -> Result<Value, Code> {
+  if token.is_none() && email.is_some() {
+    let user = wl_users::Entity::find()
+      .filter(wl_users::Column::Email.eq(email))
+      .filter(wl_users::Column::TwoFactorAuth.is_not_null().ne(""))
+      .one(&state.conn)
+      .await
+      .map_err(AppError::from)?;
+    return match user {
+      Some(_) => Ok(json!({
+          "enable": true
+      })),
+      None => Ok(json!({
+          "enable": false
+      })),
+    };
+  }
+  let user_email = jwt::verify::<String>(&token.unwrap(), &state.jwt_token)
+    .map_err(AppError::from)?
+    .claims
+    .data;
+  let user = state
+    .repo
+    .user()
+    .get_user_by_email(&user_email)
+    .await
+    .map_err(AppError::from)?
+    .ok_or(Code::Error)?;
+  let name = format!("waline_{}", user.id);
+  if let Some(secret) = user.two_factor_auth {
+    if secret.len() == 32 {
+      return Ok(json!({
+        "otpauth_url": format!("otpauth://totp/{name}?secret={}", secret),
+        "secret": secret,
+      }));
+    }
+  }
+  let raw = Secret::generate_secret();
+  let mut totp = TOTP::default();
+  totp.account_name = name.clone();
+  totp.secret = raw.to_bytes().unwrap();
+  let token = totp.generate_current().unwrap();
+  return Ok(json!({
+    "otpauth_url": totp.get_url(),
+    "secret": totp.get_secret_base32(),
+    "code":  token,
+  }));
 }
