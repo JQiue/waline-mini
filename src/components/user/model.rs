@@ -31,6 +31,8 @@ pub struct SetUserProfileBody {
   pub url: Option<String>,
   pub password: Option<String>,
   pub avatar: Option<String>,
+  #[serde(rename = "2fa")]
+  pub two_factor_auth: Option<String>,
 }
 
 #[derive(Deserialize)]
