@@ -1,16 +1,15 @@
-<div align="center">
- <p><h1>waline-mini</h1></p>
-   <p><a href="./README.md">English</a> | 简体中文</p>
-  <p><strong>Waline 的轻量级实现</strong></p>
-  <p>
+# waline-mini
 
 ![GitHub Release](https://img.shields.io/github/v/release/JQiue/waline-mini)
 ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/JQiue/waline-mini)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/JQiue/waline-mini)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/JQiue/waline-mini/total)
 ![GitHub License](https://img.shields.io/github/license/JQiue/waline-mini)
-  </p>
-</div>
+![Code Lines](https://img.shields.io/endpoint?url=https://ghloc.vercel.app/api/JQiue/waline-mini/badge?filter=.rs$)
+
+[English](./README.md) | 简体中文
+
+> 一个使用 Rust 实现的高性能 Waline 评论系统
 
 ## 介绍
 
@@ -21,6 +20,7 @@ Waline-mini 是原 Waline 评论系统的轻量级 Rust 实现，使用的内存
 ![mem](./assets/image.png)
 
 + **极低的内存使用率**: 只有 Node.js 版本内存占用的 1/25
++ **零依赖部署**: 无需安装 Node.js 环境，只需要一个可执行文件即可运行
 + **轻松替换**: 实现了原 Waline 大部分必要的 API
 + **同步更新**: 与原 Waline 的更新保持同步
 
@@ -39,12 +39,12 @@ Waline-mini 是原 Waline 评论系统的轻量级 Rust 实现，使用的内存
 | 安全性：防止灌水         | 完全可用 | 稳定   |
 | 安全性：评论审核         | 完全可用 | 稳定   |
 | 安全性：反垃圾评论       | 完全可用 | 稳定   |
-| 安全性：违禁词           | 不可用   | 进行中 |
-| 安全性：安全域名         | 不可用   | 进行中 |
+| 安全性：违禁词           | 完全可用 | 稳定   |
 | 安全性：安全域名         | 不可用   | 进行中 |
 | 安全性：不允许的 IP 列表 | 完全可用 | 稳定   |
 | OAuth                    | 不可用   | 进行中 |
 | 数据迁移                 | 完全可用 | 稳定   |
+| 双因素认证               | 完全可用 | 稳定   |
 
 ## 使用方法
 
@@ -127,6 +127,17 @@ git clone -b shuttle https://github.com/JQiue/waline-mini.git
 | DISABLE_AUTHORE_NOTIFY | 是否禁止新评论通知                                                                                                          |          | `false`        |
 | DISABLE_REGION         | 是否隐藏评论者的归属地                                                                                                      |          | `false`        |
 | DISABLE_USERAGENT      | 是否隐藏评论者的 UA                                                                                                         |          | `false`        |
+
+## 常见问题
+
+### 如何迁移现有 Waline 数据？
+
+1. 从原 waline 后台管理页面导出 JSON
+2. 在 waline-mini 后台管理页面导入 JSON
+
+### 支持哪些数据库？
+
+目前支持 SQLite 和 MySQL/MariaDB，可以通过添加编译特性支持 PostgreSQL
 
 ## 参考
 
