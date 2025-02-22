@@ -122,19 +122,21 @@ pub async fn user_login(
   password: String,
 ) -> Result<Value, Code> {
   let user = get_user(UserQueryBy::Email(email.clone()), &state.conn).await?;
+  if user.user_type.contains("verify") {
+    return Err(Code::Error);
+  }
   let result = hash::verify_bcrypt(&password, &user.password).map_err(AppError::from)?;
   if !result {
     return Err(Code::Error);
   }
-  let two_factor_auth_secret = user.two_factor_auth.clone();
-  if two_factor_auth_secret.is_some() {
-    let mut totp = TOTP::default();
-    let raw = Secret::Encoded(two_factor_auth_secret.unwrap())
-      .to_raw()
-      .unwrap();
-    totp.secret = raw.to_bytes().unwrap();
-    if !totp.check_current(&code).unwrap() {
-      return Err(Code::TwoFactorAuth);
+  if let Some(secret) = user.two_factor_auth.clone() {
+    if secret.len() == 32 {
+      let mut totp = TOTP::default();
+      let raw = Secret::Encoded(secret).to_raw().unwrap();
+      totp.secret = raw.to_bytes().unwrap();
+      if !totp.check_current(&code).unwrap() {
+        return Err(Code::TwoFactorAuth);
+      }
     }
   }
   let token = jwt::sign(user.email.clone(), &state.jwt_token, 2592000).map_err(AppError::from)?;
@@ -368,14 +370,13 @@ pub async fn get_2fa(
       .one(&state.conn)
       .await
       .map_err(AppError::from)?;
-    return match user {
-      Some(_) => Ok(json!({
-          "enable": true
-      })),
-      None => Ok(json!({
-          "enable": false
-      })),
-    };
+    let mut enabled = false;
+    if let Some(user) = user {
+      enabled = user.two_factor_auth.unwrap().len() == 32;
+    }
+    return Ok(json!({
+        "enable": enabled
+    }));
   }
   let user_email = jwt::verify::<String>(&token.unwrap(), &state.jwt_token)
     .map_err(AppError::from)?
