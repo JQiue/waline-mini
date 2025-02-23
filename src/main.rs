@@ -9,6 +9,7 @@ mod error;
 mod helpers;
 mod locales;
 mod prelude;
+mod repository;
 mod response;
 mod traits;
 
@@ -17,9 +18,10 @@ async fn main() -> Result<(), error::AppError> {
   let target_filter = filter::Targets::new()
     .with_default(LevelFilter::TRACE)
     .with_target("sqlx::query", LevelFilter::OFF)
+    .with_target("html5ever", LevelFilter::OFF)
     .with_target("rustls", LevelFilter::OFF);
   let env_filter = EnvFilter::try_from_default_env()
-    .or_else(|_| EnvFilter::try_new("info"))
+    .or_else(|_| EnvFilter::try_new("debug"))
     .unwrap();
   tracing_subscriber::registry()
     .with(tracing_subscriber::fmt::layer().with_timer(fmt::time::LocalTime::rfc_3339()))

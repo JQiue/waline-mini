@@ -1,77 +1,11 @@
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::Set;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
   entities::wl_comment,
-  error::AppError,
   helpers::{avatar::get_avatar, markdown::render_md_to_html, ua},
 };
-
-#[derive(Clone)]
-pub enum CommentQueryBy {
-  Id(u32),
-}
-
-pub async fn has_comment(
-  query_by: CommentQueryBy,
-  conn: &DatabaseConnection,
-) -> Result<bool, AppError> {
-  let mut query = wl_comment::Entity::find();
-  match query_by {
-    CommentQueryBy::Id(id) => query = query.filter(wl_comment::Column::Id.eq(id)),
-  }
-  let res = query.one(conn).await.map_err(AppError::from)?;
-  Ok(res.is_some())
-}
-
-pub async fn get_comment(
-  query_by: CommentQueryBy,
-  conn: &DatabaseConnection,
-) -> Result<wl_comment::Model, AppError> {
-  if !has_comment(query_by.to_owned(), conn).await? {
-    return Err(AppError::Error);
-  }
-  let mut query = wl_comment::Entity::find();
-  match query_by {
-    CommentQueryBy::Id(id) => query = query.filter(wl_comment::Column::Id.eq(id)),
-  }
-  query
-    .one(conn)
-    .await
-    .map_err(AppError::from)?
-    .ok_or(AppError::Error)
-}
-
-pub async fn is_anonymous(comment_id: u32, conn: &DatabaseConnection) -> Result<bool, AppError> {
-  let res = wl_comment::Entity::find_by_id(comment_id)
-    .filter(wl_comment::Column::UserId.is_not_null())
-    .filter(wl_comment::Column::UserId.ne(""))
-    .one(conn)
-    .await
-    .map_err(AppError::from)?;
-  Ok(res.is_none())
-}
-
-pub async fn is_duplicate(
-  url: &String,
-  mail: &String,
-  nick: &String,
-  link: &String,
-  comment: &String,
-  conn: &DatabaseConnection,
-) -> Result<bool, AppError> {
-  let res = wl_comment::Entity::find()
-    .filter(wl_comment::Column::Url.eq(url))
-    .filter(wl_comment::Column::Mail.eq(mail))
-    .filter(wl_comment::Column::Nick.eq(nick))
-    .filter(wl_comment::Column::Link.eq(link))
-    .filter(wl_comment::Column::Comment.eq(comment))
-    .all(conn)
-    .await
-    .map_err(AppError::from)?;
-  Ok(!res.is_empty())
-}
 
 #[derive(Serialize, Debug)]
 pub struct DataEntry {
@@ -253,6 +187,21 @@ pub fn create_comment_model(
     ip: Set(Some(ip)),
     ..Default::default()
   }
+}
+
+pub fn has_forbidden_word(comment: &str, forbidden_words: &Vec<String>) -> bool {
+  for word in forbidden_words {
+    if comment.contains(word) {
+      return true;
+    }
+  }
+  false
+}
+
+pub enum UserType {
+  Anonymous,
+  Guest(String),
+  Administrator(String),
 }
 
 #[derive(Deserialize)]

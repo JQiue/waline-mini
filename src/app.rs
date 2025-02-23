@@ -13,6 +13,7 @@ use crate::{
   },
   config::EnvConfig,
   error::AppError,
+  repository::RepositoryManager,
 };
 
 use actix_cors::Cors;
@@ -21,7 +22,7 @@ use actix_web::{
   web::{self, ServiceConfig},
   App, HttpResponse, HttpServer,
 };
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::Database;
 use tracing::info;
 
 #[derive(Debug)]
@@ -60,12 +61,13 @@ impl RateLimiter {
 
 #[derive(Debug, Clone)]
 pub struct AppState {
+  pub repo: RepositoryManager,
   pub rate_limiter: Arc<RateLimiter>,
-  pub conn: DatabaseConnection,
   pub jwt_token: String,
   pub levels: Option<String>,
   pub comment_audit: bool,
   pub login: String,
+  pub forbidden_words: Vec<String>,
 }
 
 async fn health_check() -> HttpResponse {
@@ -99,6 +101,7 @@ pub async fn start() -> Result<(), AppError> {
     ipqps,
     comment_audit,
     login,
+    forbidden_words,
     ..
   } = EnvConfig::load_env()?;
   let conn = Database::connect(database_url).await?;
@@ -107,23 +110,25 @@ pub async fn start() -> Result<(), AppError> {
     info!("The anti-spam system has been activated")
   }
   let state = AppState {
+    repo: RepositoryManager::new(conn.clone()),
     jwt_token,
-    conn,
     levels,
     login,
     comment_audit,
+    forbidden_words,
     rate_limiter: Arc::new(RateLimiter::new(ipqps)),
   };
-  HttpServer::new(move || {
-    App::new()
-      .wrap(middleware::Logger::default())
-      .wrap(Cors::permissive())
-      .app_data(web::Data::new(state.clone()))
-      .configure(config_app)
-  })
-  .bind((host, port))?
-  .workers(workers)
-  .run()
-  .await
-  .map_err(AppError::from)
+  Ok(
+    HttpServer::new(move || {
+      App::new()
+        .wrap(middleware::Logger::default())
+        .wrap(Cors::permissive())
+        .app_data(web::Data::new(state.clone()))
+        .configure(config_app)
+    })
+    .bind((host, port))?
+    .workers(workers)
+    .run()
+    .await?,
+  )
 }
