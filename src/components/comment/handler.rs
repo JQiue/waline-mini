@@ -7,14 +7,10 @@ use helpers::jwt;
 
 use crate::{
   app::AppState,
-  components::{
-    comment::{model::*, service},
-    user::model::is_admin_user,
-  },
+  components::comment::{model::*, service},
   config::EnvConfig,
-  error::AppError,
   helpers::header::{extract_ip, extract_token},
-  response::{Code, Response},
+  prelude::{AppError, Response},
 };
 
 #[get("/comment")]
@@ -22,7 +18,7 @@ async fn get_comment_info(
   req: HttpRequest,
   state: Data<AppState>,
   query: Query<GetCommentQuery>,
-) -> HttpResponse {
+) -> Result<HttpResponse, AppError> {
   let Query(GetCommentQuery {
     lang,
     path,
@@ -37,7 +33,7 @@ async fn get_comment_info(
   if let Some(path) = path {
     let fields = query.validate_by_path();
     if fields.is_err() {
-      return HttpResponse::Ok().json(Response::<()>::error(Code::Error, Some(&lang)));
+      return Response::<()>::new_error(AppError::Error, Some(&lang));
     }
     let token = extract_token(&req);
     match service::get_comment_info(
@@ -50,26 +46,22 @@ async fn get_comment_info(
     )
     .await
     {
-      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), Some(&lang))),
-      Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
+      Ok(data) => Response::new_success(Some(data)),
+      Err(err) => Response::<()>::new_error(err, Some(&lang)),
     }
   } else {
     let fields = query.validate_by_admin();
     if fields.is_err() {
-      tracing::error!("{:?}", fields.err().unwrap());
-      return HttpResponse::Ok().json(Response::<()>::error(Code::Error, Some(&lang)));
+      return Response::<()>::new_error(AppError::Error, Some(&lang));
     }
     let token = extract_token(&req).unwrap();
-    let email = match jwt::verify::<String>(&token, &state.jwt_token).map_err(AppError::from) {
+    let email = match jwt::verify::<String>(&token, &state.jwt_token) {
       Ok(token_data) => token_data.claims.data,
-      Err(err) => return HttpResponse::Ok().json(Response::<()>::error(err.into(), Some(&lang))),
+      Err(err) => return Response::<()>::new_error(err.into(), Some(&lang)),
     };
-    let is = match is_admin_user(&email, &state.conn).await {
-      Ok(value) => value,
-      Err(err) => return HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
-    };
+    let is = state.repo.user().is_admin_user(&email).await?;
     if !is {
-      return HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, Some(&lang)));
+      return Response::<()>::new_error(AppError::Unauthorized, Some(&lang));
     }
     match service::get_comment_info_by_admin(
       &state,
@@ -81,8 +73,8 @@ async fn get_comment_info(
     )
     .await
     {
-      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), Some(&lang))),
-      Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
+      Ok(data) => Response::new_success(Some(data)),
+      Err(err) => Response::<()>::new_error(err, Some(&lang)),
     }
   }
 }
@@ -112,7 +104,10 @@ async fn create_comment(
   let pass = if let Ok(token) = extract_token(&req) {
     match jwt::verify::<String>(&token, &state.jwt_token) {
       Ok(verified_token) => {
-        if is_admin_user(&verified_token.claims.data, &state.conn)
+        if state
+          .repo
+          .user()
+          .is_admin_user(&verified_token.claims.data)
           .await
           .unwrap()
         {
@@ -126,17 +121,20 @@ async fn create_comment(
       }
       Err(err) => {
         tracing::error!("{}", err);
-        return HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, Some(&lang)));
+        return HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang)));
       }
     }
   } else {
     if &state.login == "force" {
-      return HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, Some(&lang)));
+      return HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang)));
     }
     state.rate_limiter.check_and_update(&client_ip, 1)
   };
   if !pass {
-    return HttpResponse::Ok().json(Response::<()>::error(Code::FrequencyLimited, Some(&lang)));
+    return HttpResponse::Ok().json(Response::<()>::error(
+      AppError::FrequencyLimited,
+      Some(&lang),
+    ));
   }
   if !is_admin {
     let EnvConfig {
@@ -144,15 +142,21 @@ async fn create_comment(
     } = EnvConfig::load_env().unwrap();
     if disallow_ip_list.contains(&client_ip) {
       tracing::info!("Comment IP {client_ip} is in disallowIPList");
-      return HttpResponse::Ok().json(Response::<()>::error(Code::Forbidden, Some(&lang)));
+      return HttpResponse::Ok().json(Response::<()>::error(AppError::Forbidden, Some(&lang)));
     }
   }
-  if is_duplicate(&url, &mail, &nick, &link, &comment, &state.conn)
+  if state
+    .repo
+    .comment()
+    .is_duplicate(&url, &mail, &nick, &link, &comment)
     .await
     .unwrap()
     && !is_admin
   {
-    return HttpResponse::Ok().json(Response::<()>::error(Code::DuplicateContent, Some(&lang)));
+    return HttpResponse::Ok().json(Response::<()>::error(
+      AppError::DuplicateContent,
+      Some(&lang),
+    ));
   }
   match service::create_comment(
     &state,
@@ -171,7 +175,7 @@ async fn create_comment(
   )
   .await
   {
-    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), Some(&lang))),
+    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
     Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
   }
 }
@@ -181,18 +185,12 @@ pub async fn delete_comment(
   req: HttpRequest,
   state: Data<AppState>,
   path: Path<u32>,
-) -> HttpResponse {
+) -> Result<HttpResponse, AppError> {
   let id = path.into_inner();
-  if let Ok(token) = extract_token(&req) {
-    match jwt::verify::<String>(&token, &state.jwt_token) {
-      Ok(data) => match service::delete_comment(&state, id, data.claims.data).await {
-        Ok(_) => HttpResponse::Ok().json(Response::success(Some(""), None)),
-        Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
-      },
-      Err(_) => HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, None)),
-    }
-  } else {
-    HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, None))
+  let token = extract_token(&req)?;
+  match service::delete_comment(&state, id, token).await {
+    Ok(_) => Response::<()>::new_success(None),
+    Err(err) => Response::<()>::new_error(err, None),
   }
 }
 
@@ -232,7 +230,7 @@ async fn update_comment(
     )
     .await
     {
-      Ok(data) => return HttpResponse::Ok().json(Response::success(Some(data), None)),
+      Ok(data) => return HttpResponse::Ok().json(Response::success(Some(data))),
       Err(err) => return HttpResponse::Ok().json(Response::<()>::error(err, None)),
     }
   }
@@ -254,12 +252,12 @@ async fn update_comment(
       )
       .await
       {
-        Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), None)),
+        Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
         Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
       },
-      Err(_) => HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, None)),
+      Err(_) => HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None)),
     }
   } else {
-    HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, None))
+    HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None))
   }
 }

@@ -1,16 +1,10 @@
 use crate::components::migration::model::CommentData;
-use crate::components::user::model::get_user;
 use crate::prelude::*;
 
 use crate::{
   app::AppState,
-  components::{
-    comment::model::{get_comment, CommentQueryBy},
-    user::model::{has_user, UserQueryBy},
-  },
   entities::{wl_comment, wl_counter, wl_users},
-  error::AppError,
-  response::Code,
+  prelude::AppError,
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
@@ -21,23 +15,23 @@ use super::model::{CounterData, UserData};
 pub async fn export_data(state: &AppState, _lang: String) -> Result<Value, String> {
   let comments = wl_comment::Entity::find()
     .into_partial_model::<CommentData>()
-    .all(&state.conn)
+    .all(&state.repo.db)
     .await
     .log_err()
     .unwrap();
   let counters = wl_counter::Entity::find()
     .into_partial_model::<CounterData>()
-    .all(&state.conn)
+    .all(&state.repo.db)
     .await
     .log_err()
     .unwrap();
   let users = wl_users::Entity::find()
     .into_partial_model::<UserData>()
-    .all(&state.conn)
+    .all(&state.repo.db)
     .await
     .log_err()
     .unwrap();
-  let data = json!({
+  Ok(json!({
       "type": "waline",
       "version": 1,
       "time": Utc::now().timestamp_millis(),
@@ -47,8 +41,7 @@ pub async fn export_data(state: &AppState, _lang: String) -> Result<Value, Strin
         "Counter": counters,
         "Users": users,
       }
-  });
-  Ok(data)
+  }))
 }
 
 pub async fn create_comment_data(
@@ -64,7 +57,7 @@ pub async fn create_comment_data(
   created_at: Option<chrono::DateTime<Utc>>,
   updated_at: Option<chrono::DateTime<Utc>>,
   inserted_at: Option<chrono::DateTime<Utc>>,
-) -> Result<Value, Code> {
+) -> Result<Value, AppError> {
   let comment = wl_comment::ActiveModel {
     comment: Set(comment),
     inserted_at: Set(inserted_at),
@@ -79,9 +72,8 @@ pub async fn create_comment_data(
     updated_at: Set(updated_at),
     ..Default::default()
   }
-  .insert(&state.conn)
-  .await
-  .map_err(AppError::from)?;
+  .insert(&state.repo.db)
+  .await?;
   Ok(json!({
     "objectId": comment.id,
     "comment": comment.comment,
@@ -113,7 +105,7 @@ pub async fn create_counter_data(
   reaction8: Option<i32>,
   created_at: Option<chrono::DateTime<Utc>>,
   updated_at: Option<chrono::DateTime<Utc>>,
-) -> Result<wl_counter::Model, Code> {
+) -> Result<wl_counter::Model, AppError> {
   Ok(
     wl_counter::ActiveModel {
       time: Set(time),
@@ -131,9 +123,8 @@ pub async fn create_counter_data(
       updated_at: Set(updated_at),
       ..Default::default()
     }
-    .insert(&state.conn)
-    .await
-    .map_err(AppError::from)?,
+    .insert(&state.repo.db)
+    .await?,
   )
 }
 
@@ -142,13 +133,17 @@ pub async fn update_comment_data(
   object_id: u32,
   pid: Option<i32>,
   rid: Option<i32>,
-) -> Result<bool, Code> {
-  let mut comment = get_comment(CommentQueryBy::Id(object_id), &state.conn)
+) -> Result<bool, AppError> {
+  let mut active_comment = state
+    .repo
+    .comment()
+    .get_comment(object_id)
     .await?
+    .ok_or(AppError::Error)?
     .into_active_model();
-  comment.pid = Set(pid);
-  comment.rid = Set(rid);
-  comment.update(&state.conn).await.map_err(AppError::from)?;
+  active_comment.pid = Set(pid);
+  active_comment.rid = Set(rid);
+  state.repo.comment().update_comment(active_comment).await?;
   Ok(true)
 }
 
@@ -177,7 +172,7 @@ pub async fn create_user_data(
     updated_at: Set(updated_at),
     ..Default::default()
   };
-  match wl_users::Entity::insert(model).exec(&state.conn).await {
+  match wl_users::Entity::insert(model).exec(&state.repo.db).await {
     Ok(_) => Ok(true),
     Err(err) => Err(err.to_string()),
   }
@@ -195,19 +190,20 @@ pub async fn update_user_data(
   two_factor_auth: Option<String>,
   created_at: Option<DateTime<Utc>>,
   updated_at: Option<DateTime<Utc>>,
-) -> Result<(), Code> {
-  if has_user(
-    UserQueryBy::Email(email.clone().unwrap_or("".to_string())),
-    &state.conn,
-  )
-  .await?
-  {
-    let mut active_user = get_user(
-      UserQueryBy::Email(email.clone().unwrap_or("".to_string())),
-      &state.conn,
-    )
+) -> Result<(), AppError> {
+  if state
+    .repo
+    .user()
+    .has_user_by_email(&email.clone().unwrap_or("".to_owned()))
     .await?
-    .into_active_model();
+  {
+    let mut active_user = state
+      .repo
+      .user()
+      .get_user_by_email(&email.clone().unwrap_or("".to_owned()))
+      .await?
+      .ok_or(AppError::UserNotFound)?
+      .into_active_model();
     active_user.display_name = Set(display_name.unwrap());
     active_user.email = Set(email.unwrap());
     active_user.password = Set(password.unwrap());
@@ -217,14 +213,9 @@ pub async fn update_user_data(
     active_user.two_factor_auth = Set(two_factor_auth);
     active_user.created_at = Set(created_at);
     active_user.updated_at = Set(updated_at);
-    match active_user
-      .update(&state.conn)
-      .await
-      .log_err()
-      .map_err(AppError::from)
-    {
+    match active_user.update(&state.repo.db).await.log_err() {
       Ok(_) => Ok(()),
-      Err(_) => Err(Code::Error),
+      Err(_) => Err(AppError::Error),
     }
   } else {
     match (wl_users::ActiveModel {
@@ -239,33 +230,31 @@ pub async fn update_user_data(
       updated_at: Set(updated_at),
       ..Default::default()
     }
-    .insert(&state.conn)
+    .insert(&state.repo.db)
     .await
     .log_err())
     {
       Ok(_) => Ok(()),
-      Err(_) => Err(Code::Error),
+      Err(_) => Err(AppError::Error),
     }
   }
 }
 
-pub async fn delete_data(state: &AppState, table: &str) -> Result<bool, Code> {
+pub async fn delete_data(state: &AppState, table: &str) -> Result<bool, AppError> {
   match table {
     "Comment" => {
       wl_comment::Entity::delete_many()
-        .exec(&state.conn)
-        .await
-        .map_err(AppError::from)?;
+        .exec(&state.repo.db)
+        .await?;
       Ok(true)
     }
     "Counter" => {
       wl_counter::Entity::delete_many()
-        .exec(&state.conn)
-        .await
-        .map_err(AppError::from)?;
+        .exec(&state.repo.db)
+        .await?;
       Ok(true)
     }
     "User" => Ok(true),
-    _ => Err(Code::Error),
+    _ => Err(AppError::Error),
   }
 }

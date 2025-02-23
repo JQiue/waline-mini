@@ -95,6 +95,6 @@ pub struct EnvConfig {
 impl EnvConfig {
   pub fn load_env() -> Result<EnvConfig, AppError> {
     dotenvy::dotenv_override().ok();
-    envy::from_env().map_err(AppError::from)
+    Ok(envy::from_env::<EnvConfig>()?)
   }
 }

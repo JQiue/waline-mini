@@ -22,7 +22,7 @@ use actix_web::{
   web::{self, ServiceConfig},
   App, HttpResponse, HttpServer,
 };
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::Database;
 use tracing::info;
 
 #[derive(Debug)]
@@ -63,7 +63,6 @@ impl RateLimiter {
 pub struct AppState {
   pub repo: RepositoryManager,
   pub rate_limiter: Arc<RateLimiter>,
-  pub conn: DatabaseConnection,
   pub jwt_token: String,
   pub levels: Option<String>,
   pub comment_audit: bool,
@@ -112,7 +111,6 @@ pub async fn start() -> Result<(), AppError> {
   }
   let state = AppState {
     repo: RepositoryManager::new(conn.clone()),
-    conn,
     jwt_token,
     levels,
     login,
@@ -120,16 +118,17 @@ pub async fn start() -> Result<(), AppError> {
     forbidden_words,
     rate_limiter: Arc::new(RateLimiter::new(ipqps)),
   };
-  HttpServer::new(move || {
-    App::new()
-      .wrap(middleware::Logger::default())
-      .wrap(Cors::permissive())
-      .app_data(web::Data::new(state.clone()))
-      .configure(config_app)
-  })
-  .bind((host, port))?
-  .workers(workers)
-  .run()
-  .await
-  .map_err(AppError::from)
+  Ok(
+    HttpServer::new(move || {
+      App::new()
+        .wrap(middleware::Logger::default())
+        .wrap(Cors::permissive())
+        .app_data(web::Data::new(state.clone()))
+        .configure(config_app)
+    })
+    .bind((host, port))?
+    .workers(workers)
+    .run()
+    .await?,
+  )
 }
