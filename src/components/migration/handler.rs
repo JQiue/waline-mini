@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::{
   app::AppState,
   components::migration::{model::*, service},
-  response::{Code, Response},
+  prelude::{AppError, Response},
 };
 
 #[get("/db")]
@@ -81,7 +81,7 @@ pub async fn create_data(
     )
     .await
     {
-      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), Some(&lang))),
+      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
       Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
     },
     "Counter" => match service::create_counter_data(
@@ -155,7 +155,7 @@ pub async fn update_data(
   }) = body;
   match query.table.as_str() {
     "Comment" => match service::update_comment_data(&state, query.object_id, pid, rid).await {
-      Ok(_) => HttpResponse::Ok().json(Response::<()>::success(None, Some(&query.lang))),
+      Ok(_) => HttpResponse::Ok().json(Response::<()>::success(None)),
       Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&query.lang))),
     },
     "Users" => match service::update_user_data(
@@ -173,10 +173,10 @@ pub async fn update_data(
     )
     .await
     {
-      Ok(()) => HttpResponse::Ok().json(Response::<()>::success(None, Some(&query.lang))),
+      Ok(()) => HttpResponse::Ok().json(Response::<()>::success(None)),
       Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&query.lang))),
     },
-    _ => HttpResponse::Ok().json(Response::<()>::error(Code::Error, Some(&query.lang))),
+    _ => HttpResponse::Ok().json(Response::<()>::error(AppError::Error, Some(&query.lang))),
   }
 }
 
@@ -184,7 +184,7 @@ pub async fn update_data(
 pub async fn delete_data(state: Data<AppState>, query: Query<DeleteQuery>) -> HttpResponse {
   let Query(DeleteQuery { table, lang }) = query;
   match service::delete_data(&state, &table).await {
-    Ok(_) => HttpResponse::Ok().json(Response::<()>::success(None, Some(&lang))),
+    Ok(_) => HttpResponse::Ok().json(Response::<()>::success(None)),
     Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
   }
 }
