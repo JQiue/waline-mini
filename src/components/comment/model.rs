@@ -67,8 +67,16 @@ pub fn get_level(count: usize, levels: &str) -> usize {
   0
 }
 
-pub fn build_data_entry(comment: wl_comment::Model, level: Option<usize>) -> DataEntry {
-  let (browser, os) = ua::parse(comment.ua.unwrap_or("".to_owned()));
+pub fn build_data_entry(
+  comment: wl_comment::Model,
+  level: Option<usize>,
+  disable_useragent: bool,
+) -> DataEntry {
+  let (browser, os) = if disable_useragent {
+    ("".to_string(), "".to_string())
+  } else {
+    ua::parse(comment.ua.unwrap_or("".to_owned()))
+  };
   let safe_html = if let Some(ref comment_text) = comment.comment {
     Some(ammonia::clean(&render_md_to_html(comment_text)))
   } else {

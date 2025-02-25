@@ -69,13 +69,12 @@ pub async fn get_comment_info(
         parrent_comment.mail.clone(),
       )
       .await?;
-
     let level = state
       .levels
       .as_ref()
       .map(|levels| get_level(c as usize, levels));
-
-    let mut parrent_data = build_data_entry(parrent_comment.clone(), level);
+    let mut parrent_data =
+      build_data_entry(parrent_comment.clone(), level, state.disable_useragent);
 
     if let Some(user_id) = parrent_data.user_id {
       if let Some(user) = state.repo.user().get_user_by_id(user_id as u32).await? {
@@ -127,7 +126,8 @@ pub async fn get_comment_info(
         .levels
         .as_ref()
         .map(|levels| get_level(c as usize, levels));
-      let mut subcomment_data = build_data_entry(subcomment.clone(), level);
+      let mut subcomment_data =
+        build_data_entry(subcomment.clone(), level, state.disable_useragent);
 
       if let Some(user_id) = subcomment_data.user_id {
         let user = state.repo.user().get_user_by_id(user_id as u32).await?;
@@ -180,7 +180,7 @@ pub async fn get_comment_info_by_admin(
   let mut data = vec![];
 
   for comment in comments.iter() {
-    let mut data_entry = build_data_entry(comment.clone(), None);
+    let mut data_entry = build_data_entry(comment.clone(), None, state.disable_useragent);
     if let Some(user_id) = data_entry.user_id {
       if let Some(user) = state.repo.user().get_user_by_id(user_id as u32).await? {
         data_entry.label = user.label;
@@ -241,15 +241,13 @@ pub async fn create_comment<'a>(
         "waiting".to_string()
       } else if has_forbidden_word(&comment, &state.forbidden_words) {
         "spam".to_string()
+      } else if matches!(
+        check_comment(nick, mail, ip, comment).await?,
+        CheckResult::Ham
+      ) {
+        "approved".to_string()
       } else {
-        if matches!(
-          check_comment(nick, mail, ip, comment).await?,
-          CheckResult::Ham
-        ) {
-          "approved".to_string()
-        } else {
-          "spam".to_string()
-        }
+        "spam".to_string()
       });
     }
     UserType::Guest(email) => {
@@ -259,15 +257,13 @@ pub async fn create_comment<'a>(
           "waiting".to_string()
         } else if has_forbidden_word(&comment, &state.forbidden_words) {
           "spam".to_string()
+        } else if matches!(
+          check_comment(nick, mail, ip, comment).await?,
+          CheckResult::Ham
+        ) {
+          "approved".to_string()
         } else {
-          if matches!(
-            check_comment(nick, mail, ip, comment).await?,
-            CheckResult::Ham
-          ) {
-            "approved".to_string()
-          } else {
-            "spam".to_string()
-          }
+          "spam".to_string()
         });
         data["label"] = json!(user.label);
         data["mail"] = json!(user.email);

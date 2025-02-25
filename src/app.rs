@@ -68,6 +68,7 @@ pub struct AppState {
   pub comment_audit: bool,
   pub login: String,
   pub forbidden_words: Vec<String>,
+  pub disable_useragent: bool,
 }
 
 async fn health_check() -> HttpResponse {
@@ -102,6 +103,7 @@ pub async fn start() -> Result<(), AppError> {
     comment_audit,
     login,
     forbidden_words,
+    disable_useragent,
     ..
   } = EnvConfig::load_env()?;
   let conn = Database::connect(database_url).await?;
@@ -116,6 +118,7 @@ pub async fn start() -> Result<(), AppError> {
     login,
     comment_audit,
     forbidden_words,
+    disable_useragent,
     rate_limiter: Arc::new(RateLimiter::new(ipqps)),
   };
   Ok(

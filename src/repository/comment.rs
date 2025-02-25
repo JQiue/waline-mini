@@ -48,7 +48,7 @@ impl<'a> CommentRepository<'a> {
       .filter(wl_comment::Column::Pid.is_null())
       .order_by(sort_col, sort_ord)
       .paginate(self.db, page_size);
-    let parrent_comments = paginator.fetch_page((page - 1) as u64).await?;
+    let parrent_comments = paginator.fetch_page(page - 1).await?;
     Ok((paginator.num_items_and_pages().await?, parrent_comments))
   }
 
@@ -178,7 +178,7 @@ impl<'a> CommentRepository<'a> {
       select = select.filter(wl_comment::Column::Mail.eq(email))
     }
     let paginator = select.paginate(self.db, page_size);
-    let comment = paginator.fetch_page((page - 1) as u64).await?;
+    let comment = paginator.fetch_page(page - 1).await?;
     Ok((paginator.num_items_and_pages().await?, comment))
   }
 }

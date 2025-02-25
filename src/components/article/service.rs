@@ -19,17 +19,15 @@ pub async fn get_article(
         data.push(json!({"time": 0}));
       }
     }
-  } else {
-    if let Some(counter) = state.repo.counter().get_counter(&path).await? {
-      data.push(json!({
-        "reaction0": counter.reaction0,
-        "reaction1": counter.reaction1,
-        "reaction2": counter.reaction2,
-        "reaction3": counter.reaction3,
-        "reaction4": counter.reaction4,
-        "reaction5": counter.reaction5,
-      }));
-    }
+  } else if let Some(counter) = state.repo.counter().get_counter(&path).await? {
+    data.push(json!({
+      "reaction0": counter.reaction0,
+      "reaction1": counter.reaction1,
+      "reaction2": counter.reaction2,
+      "reaction3": counter.reaction3,
+      "reaction4": counter.reaction4,
+      "reaction5": counter.reaction5,
+    }));
   }
   Ok(data)
 }

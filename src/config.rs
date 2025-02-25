@@ -1,9 +1,8 @@
 //! config
 
-use serde::Deserialize;
+use serde::{de::Deserializer, Deserialize};
 
 use crate::error::AppError;
-use serde::de::Deserializer;
 
 fn default_workers() -> usize {
   1
@@ -55,6 +54,10 @@ where
   Ok(s.split(',').map(|s| s.trim().to_string()).collect())
 }
 
+fn default_disable_useragent() -> bool {
+  false
+}
+
 #[derive(Deserialize)]
 pub struct EnvConfig {
   #[serde(default = "default_workers")]
@@ -90,6 +93,8 @@ pub struct EnvConfig {
   pub forbidden_words: Vec<String>,
   #[serde(default, deserialize_with = "deserialize_comma_separated")]
   pub secure_domians: Vec<String>,
+  #[serde(default = "default_disable_useragent")]
+  pub disable_useragent: bool,
 }
 
 impl EnvConfig {

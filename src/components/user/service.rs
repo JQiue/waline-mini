@@ -65,7 +65,8 @@ pub async fn user_register(
       state.repo.user().update_user(active_user).await?;
       return Ok(data);
     }
-    return Err(AppError::UserRegistered);
+
+    Err(AppError::UserRegistered)
   } else {
     let mut active_user: wl_users::ActiveModel = wl_users::ActiveModel {
       display_name: Set(display_name),
@@ -335,12 +336,12 @@ pub async fn set_2fa(
   if let Ok(check) = totp.check_current(&code) {
     if check {
       state.repo.user().set_2fa(user).await?;
-      return Ok(json!({}));
+      Ok(json!({}))
     } else {
-      return Err(AppError::TwoFactorAuth);
+      Err(AppError::TwoFactorAuth)
     }
   } else {
-    return Err(AppError::Error);
+    Err(AppError::Error)
   }
 }
 
@@ -363,6 +364,7 @@ pub async fn get_2fa(
         "enable": enabled
     }));
   }
+
   let user_email = jwt::verify::<String>(&token.unwrap(), &state.jwt_token)?
     .claims
     .data;
@@ -373,6 +375,7 @@ pub async fn get_2fa(
     .await?
     .ok_or(AppError::Error)?;
   let name = format!("waline_{}", user.id);
+
   if let Some(secret) = user.two_factor_auth {
     if secret.len() == 32 {
       return Ok(json!({
@@ -381,14 +384,17 @@ pub async fn get_2fa(
       }));
     }
   }
+
   let raw = Secret::generate_secret();
-  let mut totp = TOTP::default();
-  totp.account_name = name.clone();
-  totp.secret = raw.to_bytes().unwrap();
+  let totp = TOTP {
+    account_name: name.clone(),
+    secret: raw.to_bytes().unwrap(),
+    ..Default::default()
+  };
   let token = totp.generate_current().unwrap();
-  return Ok(json!({
+  Ok(json!({
     "otpauth_url": totp.get_url(),
     "secret": totp.get_secret_base32(),
     "code":  token,
-  }));
+  }))
 }

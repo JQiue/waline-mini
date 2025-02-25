@@ -111,7 +111,7 @@ pub async fn set_user_profile(
         Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
       }
     }
-    Err(err) => HttpResponse::Ok().json(Response::<()>::error(err.into(), None)),
+    Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
   }
 }
 
