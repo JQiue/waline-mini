@@ -21,7 +21,7 @@ async fn main() -> Result<(), error::AppError> {
     .with_target("html5ever", LevelFilter::OFF)
     .with_target("rustls", LevelFilter::OFF);
   let env_filter = EnvFilter::try_from_default_env()
-    .or_else(|_| EnvFilter::try_new("debug"))
+    .or_else(|_| EnvFilter::try_new("info"))
     .unwrap();
   tracing_subscriber::registry()
     .with(tracing_subscriber::fmt::layer().with_timer(fmt::time::LocalTime::rfc_3339()))

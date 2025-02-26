@@ -7,7 +7,7 @@ use crate::{
   helpers::{avatar::get_avatar, markdown::render_md_to_html, ua},
 };
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Clone)]
 pub struct DataEntry {
   pub status: String,
   pub like: Option<i32>,
@@ -71,11 +71,17 @@ pub fn build_data_entry(
   comment: wl_comment::Model,
   level: Option<usize>,
   disable_useragent: bool,
+  disable_region: bool,
 ) -> DataEntry {
   let (browser, os) = if disable_useragent {
     ("".to_string(), "".to_string())
   } else {
     ua::parse(comment.ua.unwrap_or("".to_owned()))
+  };
+  let addr = if disable_region {
+    Some("".to_string())
+  } else {
+    None
   };
   let safe_html = if let Some(ref comment_text) = comment.comment {
     Some(ammonia::clean(&render_md_to_html(comment_text)))
@@ -104,7 +110,7 @@ pub fn build_data_entry(
     level,
     label: None,
     sticky: comment.sticky,
-    addr: None,
+    addr,
     children: vec![],
     reply_user: None,
   }
