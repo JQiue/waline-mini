@@ -41,7 +41,7 @@ impl SmtpService {
   }
 }
 
-pub struct CommentNotification<'a> {
+pub struct Notification<'a> {
   pub sender_name: String,
   pub sender_email: String,
   pub comment_id: u32,
@@ -52,12 +52,13 @@ pub struct CommentNotification<'a> {
 }
 
 pub enum NotifyType {
-  Notify,
+  RegisterUser,
   NewComment,
   _ReplyComment,
+  ResetPassword,
 }
 
-pub fn send_email_notification(notification: CommentNotification) {
+pub fn send_email_notification(notification: Notification) {
   let EnvConfig {
     site_name,
     site_url,
@@ -98,13 +99,24 @@ pub fn send_email_notification(notification: CommentNotification) {
       to = &notification.sender_email;
       reply_to = &author_email;
     }
-    NotifyType::Notify => {
+    NotifyType::RegisterUser => {
       let subject_template = get_translation(lang, "Registration Confirm Mail");
       let body_template = get_translation(lang, "confirm registration");
       subject = strfmt!(&subject_template, name => site_name.clone()).unwrap();
       body =
         strfmt!(&body_template, url=> notification.url.clone(), url=> notification.url).unwrap();
       tracing::debug!("Body: {:#?}", body);
+      to = &notification.sender_email;
+      reply_to = &author_email;
+    }
+    NotifyType::ResetPassword => {
+      let subject_template = get_translation(lang, "Reset Password");
+      let body_template = get_translation(
+        lang,
+        "Please click link to login and change your password as soon as possible!",
+      );
+      subject = strfmt!(&subject_template, name => site_name.clone()).unwrap();
+      body = strfmt!(&body_template, url=> notification.url).unwrap();
       to = &notification.sender_email;
       reply_to = &author_email;
     }

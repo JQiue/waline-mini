@@ -52,7 +52,16 @@ pub fn extract_host(req: &HttpRequest) -> String {
 pub fn extract_referer(req: &HttpRequest) -> String {
   req
     .headers()
-    .get("referer")
+    .get("Referer")
+    .and_then(|h| h.to_str().ok())
+    .unwrap_or_default()
+    .to_string()
+}
+
+pub fn extract_origin(req: &HttpRequest) -> String {
+  req
+    .headers()
+    .get("Origin")
     .and_then(|h| h.to_str().ok())
     .unwrap_or_default()
     .to_string()

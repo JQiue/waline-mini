@@ -60,3 +60,13 @@ pub struct Get2faQuery {
 pub struct SetUserTypeBody {
   pub r#type: String,
 }
+
+#[derive(Deserialize)]
+pub struct UserPasswordQuery {
+  pub lang: String,
+}
+
+#[derive(Deserialize)]
+pub struct UserPasswordBody {
+  pub email: String,
+}
