@@ -29,6 +29,10 @@ pub async fn get_comment_info(
   sort_by: String,
   token: Result<String, AppError>,
 ) -> Result<Value, AppError> {
+  if let Some(result) = state.comment_cache.lock().unwrap().get(path.clone(), page) {
+    return Ok(result);
+  }
+
   let mut is_admin = false;
   if let Ok(token) = token {
     if let Ok(email) = jwt::verify::<String>(&token, &state.jwt_token).map(|t| t.claims.data) {
@@ -141,6 +145,11 @@ pub async fn get_comment_info(
     "pageSize": page_size,
     "totalPages": total_pages
   });
+  state
+    .comment_cache
+    .lock()
+    .unwrap()
+    .insert(path, page, data.clone());
   Ok(data)
 }
 
@@ -205,6 +214,7 @@ pub async fn create_comment<'a>(
   user_type: UserType,
   lang: String,
 ) -> Result<Value, AppError> {
+  state.comment_cache.lock().unwrap().invalidate(&url);
   let html_output = render_md_to_html(&comment);
   let mut avatar = get_avatar("");
   let mut new_comment = create_comment_model(
@@ -323,6 +333,7 @@ pub async fn delete_comment(state: &AppState, id: u32, token: String) -> Result<
     return Err(AppError::Forbidden);
   }
   state.repo.comment().delete_comment(id).await?;
+  state.comment_cache.lock().unwrap().clear();
   Ok(())
 }
 
@@ -353,13 +364,8 @@ pub async fn update_comment(
     .await?
     .ok_or(AppError::UserNotFound)?;
 
-  // let comment_opt = wl_comment::Entity::find()
-  //   .filter(wl_comment::Column::Id.eq(id))
-  //   .filter(wl_comment::Column::UserId.eq(user.id))
-  //   .one(&state.conn)
-  //   .await?;
-
-  if !state.repo.comment().is_comment_owner(id, user.id).await? {
+  if !state.repo.comment().is_comment_owner(id, user.id).await? && user.user_type != "administrator"
+  {
     return Err(AppError::Forbidden);
   }
 
@@ -406,6 +412,7 @@ pub async fn update_comment(
   }
 
   let updated_comment = state.repo.comment().update_comment(active_comment).await?;
+  state.comment_cache.lock().unwrap().clear();
   let (browser, os) = ua::parse(updated_comment.ua.unwrap_or("".to_owned()));
   let like = updated_comment.like.unwrap_or(0);
   let time = updated_comment.created_at.unwrap().timestamp_millis();
@@ -439,7 +446,6 @@ pub async fn update_comment(
       .get_user_by_id(updated_comment.user_id.unwrap() as u32)
       .await?
       .ok_or(AppError::UserNotFound)?;
-
     let mut data = json!({
       "addr":"",
       "avatar": get_avatar(&user.email),

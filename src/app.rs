@@ -25,6 +25,7 @@ use actix_web::{
   App, HttpResponse, HttpServer,
 };
 use sea_orm::Database;
+use serde_json::Value;
 use tracing::info;
 
 #[derive(Debug)]
@@ -62,6 +63,37 @@ impl RateLimiter {
 }
 
 #[derive(Clone)]
+pub struct CommentCache {
+  pub cache: Arc<Mutex<HashMap<(String, i32), Value>>>,
+}
+
+impl CommentCache {
+  fn new() -> Self {
+    CommentCache {
+      cache: Arc::new(Mutex::new(HashMap::new())),
+    }
+  }
+
+  pub fn get(&self, path: String, page: i32) -> Option<Value> {
+    let cache = self.cache.lock().unwrap().get(&(path, page)).cloned();
+    cache
+  }
+
+  pub fn insert(&mut self, path: String, page: i32, data: Value) {
+    self.cache.lock().unwrap().insert((path, page), data);
+  }
+
+  pub fn invalidate(&self, path: &str) {
+    let mut cache = self.cache.lock().unwrap();
+    cache.retain(|(old_path, _), _| old_path != path);
+  }
+
+  pub fn clear(&self) {
+    self.cache.lock().unwrap().clear();
+  }
+}
+
+#[derive(Clone)]
 pub struct AppState {
   pub repo: RepositoryManager,
   pub rate_limiter: Arc<RateLimiter>,
@@ -72,6 +104,7 @@ pub struct AppState {
   pub forbidden_words: Vec<String>,
   pub disable_useragent: bool,
   pub disable_region: bool,
+  pub comment_cache: Arc<Mutex<CommentCache>>,
 }
 
 async fn health_check() -> HttpResponse {
@@ -115,6 +148,7 @@ pub async fn start() -> Result<(), AppError> {
   if akismet_key != "false" {
     info!("The anti-spam system has been activated")
   }
+  let comment_cache = CommentCache::new();
   let state = AppState {
     repo: RepositoryManager::new(conn.clone()),
     jwt_token,
@@ -124,6 +158,7 @@ pub async fn start() -> Result<(), AppError> {
     forbidden_words,
     disable_useragent,
     disable_region,
+    comment_cache: Arc::new(Mutex::new(comment_cache)),
     rate_limiter: Arc::new(RateLimiter::new(ipqps)),
   };
   Ok(
