@@ -17,7 +17,7 @@ use crate::{
   entities::*,
   helpers::{
     avatar::get_avatar,
-    email::{send_email_notification, CommentNotification, NotifyType},
+    email::{send_email_notification, Notification, NotifyType},
   },
   prelude::AppError,
 };
@@ -53,13 +53,13 @@ pub async fn user_register(
         "http://{}/api/verification?token={}&email={}",
         host_header, token, email
       );
-      send_email_notification(CommentNotification {
+      send_email_notification(Notification {
         sender_name: site_name,
         sender_email: email,
         comment_id: 0,
         comment: "".to_string(),
         url,
-        notify_type: NotifyType::Notify,
+        notify_type: NotifyType::RegisterUser,
         lang: Some(lang),
       });
       state.repo.user().update_user(active_user).await?;
@@ -90,13 +90,13 @@ pub async fn user_register(
         "http://{}/api/verification?token={}&email={}",
         host_header, token, email
       );
-      send_email_notification(CommentNotification {
+      send_email_notification(Notification {
         sender_name: site_name,
         sender_email: email,
         comment_id: 0,
         comment: "".to_string(),
         url,
-        notify_type: NotifyType::Notify,
+        notify_type: NotifyType::RegisterUser,
         lang: Some(lang),
       });
     }
@@ -397,4 +397,39 @@ pub async fn get_2fa(
     "secret": totp.get_secret_base32(),
     "code":  token,
   }))
+}
+
+pub async fn modify_password(
+  state: &AppState,
+  email: String,
+  origin: &str,
+  lang: &str,
+) -> Result<Value, AppError> {
+  let EnvConfig {
+    smtp_service,
+    smtp_host,
+    ..
+  } = EnvConfig::load_env()?;
+
+  if smtp_service.is_none() || smtp_host.is_none() {
+    return Err(AppError::Error);
+  }
+
+  if let Some(user) = state.repo.user().get_user_by_email(&email).await? {
+    let token = jwt::sign(user.email.clone(), &state.jwt_token, 300)?;
+    let url = format!("{}/ui/profile?token={}", origin, token);
+    send_email_notification(Notification {
+      notify_type: NotifyType::ResetPassword,
+      sender_name: "".to_owned(),
+      sender_email: user.email,
+      comment_id: 0,
+      comment: "".to_owned(),
+      url,
+      lang: Some(lang),
+    });
+  } else {
+    return Err(AppError::Error);
+  }
+
+  Ok(json!(()))
 }

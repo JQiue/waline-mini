@@ -9,7 +9,7 @@ use actix_web::{
 use crate::{
   app::AppState,
   components::user::{model::*, service},
-  helpers::header::{extract_token, extract_token_from_header},
+  helpers::header::{extract_origin, extract_token, extract_token_from_header},
   prelude::{AppError, Response},
 };
 
@@ -186,6 +186,22 @@ pub async fn get_2fa(
   let Query(Get2faQuery { lang, email }) = query;
   let token = extract_token(&req).map_or(None, |token| Some(token));
   match service::get_2fa(&state, token, email).await {
+    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
+    Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
+  }
+}
+
+#[put("/user/password")]
+pub async fn modify_password(
+  req: HttpRequest,
+  state: Data<AppState>,
+  query: Query<UserPasswordQuery>,
+  body: Json<UserPasswordBody>,
+) -> HttpResponse {
+  let Query(UserPasswordQuery { lang }) = query;
+  let Json(UserPasswordBody { email }) = body;
+  let origin = extract_origin(&req);
+  match service::modify_password(&state, email, &origin, &lang).await {
     Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
     Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
   }

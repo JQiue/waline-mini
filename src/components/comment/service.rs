@@ -13,7 +13,7 @@ use crate::{
   entities::wl_comment,
   helpers::{
     avatar::get_avatar,
-    email::{send_email_notification, CommentNotification, NotifyType},
+    email::{send_email_notification, Notification, NotifyType},
     markdown::render_md_to_html,
     spam::check_comment,
     ua,
@@ -296,7 +296,7 @@ pub async fn create_comment<'a>(
     data["rid"] = json!(rid);
   };
   spawn(async move {
-    send_email_notification(CommentNotification {
+    send_email_notification(Notification {
       sender_name: comment.nick.unwrap(),
       sender_email: comment.mail.unwrap(),
       comment_id: comment.id,
