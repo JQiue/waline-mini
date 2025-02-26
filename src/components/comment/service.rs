@@ -43,7 +43,6 @@ pub async fn get_comment_info(
       }
     }
   }
-
   let (
     ItemsAndPagesNumber {
       number_of_items,
@@ -58,7 +57,8 @@ pub async fn get_comment_info(
   // Get comment count for articles
   let mut count = number_of_items;
   let total_pages = number_of_pages;
-  let mut data = vec![];
+  let levels = state.levels.as_ref();
+  let mut comment_data = vec![];
 
   for parrent_comment in parrent_comments {
     let c = state
@@ -69,12 +69,13 @@ pub async fn get_comment_info(
         parrent_comment.mail.clone(),
       )
       .await?;
-    let level = state
-      .levels
-      .as_ref()
-      .map(|levels| get_level(c as usize, levels));
-    let mut parrent_data =
-      build_data_entry(parrent_comment.clone(), level, state.disable_useragent);
+    let level = levels.map(|levels| get_level(c as usize, levels));
+    let mut parrent_data = build_data_entry(
+      parrent_comment.clone(),
+      level,
+      state.disable_useragent,
+      state.disable_region,
+    );
 
     if let Some(user_id) = parrent_data.user_id {
       if let Some(user) = state.repo.user().get_user_by_id(user_id as u32).await? {
@@ -88,29 +89,11 @@ pub async fn get_comment_info(
       parrent_data.ip = parrent_comment.ip.clone();
     }
 
-    // let mut subcomments = wl_comment::Entity::find()
-    //   .filter(wl_comment::Column::Url.contains(path.clone()))
-    //   .filter(wl_comment::Column::Pid.eq(parrent_comment.id))
-    //   .filter(wl_comment::Column::Status.is_not_in(["waiting", "spam"]))
-    //   .order_by(wl_comment::Column::InsertedAt, Order::Asc)
-    //   .all(&state.conn)
-    //   .await?;
-
     let subcomments = state
       .repo
       .comment()
       .get_subcomments(&path, parrent_comment.id, is_admin)
       .await?;
-
-    // if is_admin {
-    //   subcomments = wl_comment::Entity::find()
-    //     .filter(wl_comment::Column::Url.contains(path.clone()))
-    //     .filter(wl_comment::Column::Pid.eq(parrent_comment.id))
-    //     .order_by(wl_comment::Column::InsertedAt, Order::Asc)
-    //     .all(&state.conn)
-    //     .await?;
-    // }
-
     count += subcomments.len() as u64;
 
     for subcomment in subcomments {
@@ -122,12 +105,13 @@ pub async fn get_comment_info(
           parrent_comment.mail.clone(),
         )
         .await?;
-      let level = state
-        .levels
-        .as_ref()
-        .map(|levels| get_level(c as usize, levels));
-      let mut subcomment_data =
-        build_data_entry(subcomment.clone(), level, state.disable_useragent);
+      let level = levels.map(|levels| get_level(c as usize, levels));
+      let mut subcomment_data = build_data_entry(
+        subcomment.clone(),
+        level,
+        state.disable_useragent,
+        state.disable_region,
+      );
 
       if let Some(user_id) = subcomment_data.user_id {
         let user = state.repo.user().get_user_by_id(user_id as u32).await?;
@@ -147,15 +131,17 @@ pub async fn get_comment_info(
       }));
       parrent_data.children.push(subcomment_data)
     }
-    data.push(parrent_data)
+    comment_data.push(parrent_data)
   }
-  Ok(json!({
+
+  let data = json!({
     "count": count,
-    "data": data,
+    "data": comment_data,
     "page": page,
     "pageSize": page_size,
     "totalPages": total_pages
-  }))
+  });
+  Ok(data)
 }
 
 pub async fn get_comment_info_by_admin(
@@ -180,7 +166,12 @@ pub async fn get_comment_info_by_admin(
   let mut data = vec![];
 
   for comment in comments.iter() {
-    let mut data_entry = build_data_entry(comment.clone(), None, state.disable_useragent);
+    let mut data_entry = build_data_entry(
+      comment.clone(),
+      None,
+      state.disable_useragent,
+      state.disable_region,
+    );
     if let Some(user_id) = data_entry.user_id {
       if let Some(user) = state.repo.user().get_user_by_id(user_id as u32).await? {
         data_entry.label = user.label;

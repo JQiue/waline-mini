@@ -7,7 +7,9 @@ use std::{
 
 use crate::{
   components::{
-    article, comment, migration,
+    article,
+    comment::{self},
+    migration,
     ui::{self, handler::ui_page},
     user,
   },
@@ -59,7 +61,7 @@ impl RateLimiter {
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AppState {
   pub repo: RepositoryManager,
   pub rate_limiter: Arc<RateLimiter>,
@@ -69,6 +71,7 @@ pub struct AppState {
   pub login: String,
   pub forbidden_words: Vec<String>,
   pub disable_useragent: bool,
+  pub disable_region: bool,
 }
 
 async fn health_check() -> HttpResponse {
@@ -104,6 +107,7 @@ pub async fn start() -> Result<(), AppError> {
     login,
     forbidden_words,
     disable_useragent,
+    disable_region,
     ..
   } = EnvConfig::load_env()?;
   let conn = Database::connect(database_url).await?;
@@ -119,6 +123,7 @@ pub async fn start() -> Result<(), AppError> {
     comment_audit,
     forbidden_words,
     disable_useragent,
+    disable_region,
     rate_limiter: Arc::new(RateLimiter::new(ipqps)),
   };
   Ok(
