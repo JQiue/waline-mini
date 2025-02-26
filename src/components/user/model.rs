@@ -1,8 +1,4 @@
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder};
 use serde::Deserialize;
-
-use crate::error::AppError;
-use crate::{entities::wl_users, response::Code};
 
 #[derive(Deserialize)]
 pub struct UserRegisterQuery {
@@ -60,74 +56,17 @@ pub struct Get2faQuery {
   pub email: Option<String>,
 }
 
-pub async fn is_first_user(conn: &DatabaseConnection) -> Result<bool, Code> {
-  let users = wl_users::Entity::find()
-    .all(conn)
-    .await
-    .map_err(AppError::from)?;
-  Ok(users.is_empty())
-}
-
-pub async fn is_first_admin_user(id: u32, conn: &DatabaseConnection) -> Result<bool, Code> {
-  let users = wl_users::Entity::find()
-    .filter(wl_users::Column::UserType.eq("administrator"))
-    .order_by_asc(wl_users::Column::CreatedAt)
-    .all(conn)
-    .await
-    .map_err(AppError::from)?;
-  if let Some(first_user) = users.first() {
-    Ok(first_user.id == id)
-  } else {
-    Ok(false)
-  }
-}
-
-pub async fn is_admin_user(email: &str, conn: &DatabaseConnection) -> Result<bool, Code> {
-  let user = wl_users::Entity::find()
-    .filter(wl_users::Column::Email.eq(email))
-    .filter(wl_users::Column::UserType.eq("administrator"))
-    .one(conn)
-    .await
-    .map_err(AppError::from)?;
-  Ok(user.is_some())
-}
-
-#[derive(Debug, Clone)]
-pub enum UserQueryBy {
-  Id(u32),
-  Email(String),
-}
-
-pub async fn has_user(query_by: UserQueryBy, conn: &DatabaseConnection) -> Result<bool, AppError> {
-  let mut query = wl_users::Entity::find();
-  match query_by {
-    UserQueryBy::Id(id) => query = query.filter(wl_users::Column::Id.eq(id)),
-    UserQueryBy::Email(email) => query = query.filter(wl_users::Column::Email.eq(email)),
-  }
-  let res = query.one(conn).await.map_err(AppError::from)?;
-  Ok(res.is_some())
-}
-
 #[derive(Deserialize)]
 pub struct SetUserTypeBody {
   pub r#type: String,
 }
 
-pub async fn get_user(
-  query_by: UserQueryBy,
-  conn: &DatabaseConnection,
-) -> Result<wl_users::Model, AppError> {
-  if !has_user(query_by.to_owned(), conn).await? {
-    return Err(AppError::UserNotFound);
-  }
-  let mut query = wl_users::Entity::find();
-  match query_by {
-    UserQueryBy::Id(id) => query = query.filter(wl_users::Column::Id.eq(id)),
-    UserQueryBy::Email(email) => query = query.filter(wl_users::Column::Email.eq(email)),
-  }
-  query
-    .one(conn)
-    .await
-    .map_err(AppError::from)?
-    .ok_or(AppError::UserNotFound)
+#[derive(Deserialize)]
+pub struct UserPasswordQuery {
+  pub lang: String,
+}
+
+#[derive(Deserialize)]
+pub struct UserPasswordBody {
+  pub email: String,
 }

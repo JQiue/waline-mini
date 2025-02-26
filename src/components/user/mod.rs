@@ -5,6 +5,7 @@ mod service;
 use actix_web::web::ServiceConfig;
 
 pub fn config(cfg: &mut ServiceConfig) {
+  cfg.service(handler::modify_password);
   cfg.service(handler::user_login);
   cfg.service(handler::user_logout);
   cfg.service(handler::user_register);

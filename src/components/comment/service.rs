@@ -4,27 +4,21 @@ use helpers::{
   time::{self, utc_now},
 };
 use instant_akismet::CheckResult;
-use sea_orm::{
-  ActiveModelTrait, ColumnTrait, EntityTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, Set,
-};
+use sea_orm::{ItemsAndPagesNumber, Set};
 use serde_json::{json, Value};
 
 use crate::{
   app::AppState,
-  components::{
-    comment::model::*,
-    user::model::{get_user, is_admin_user, UserQueryBy},
-  },
+  components::comment::model::*,
   entities::wl_comment,
-  error::AppError,
   helpers::{
     avatar::get_avatar,
-    email::{send_email_notification, CommentNotification, NotifyType},
+    email::{send_email_notification, Notification, NotifyType},
     markdown::render_md_to_html,
     spam::check_comment,
     ua,
   },
-  response::Code,
+  prelude::AppError,
 };
 
 pub async fn get_comment_info(
@@ -34,61 +28,62 @@ pub async fn get_comment_info(
   page_size: i32,
   sort_by: String,
   token: Result<String, AppError>,
-) -> Result<Value, Code> {
-  let (sort_col, sort_ord) = match sort_by.as_str() {
-    "insertedAt_asc" => (wl_comment::Column::InsertedAt, Order::Asc),
-    "like_desc" => (wl_comment::Column::Like, Order::Desc),
-    _ => (wl_comment::Column::InsertedAt, Order::Desc),
-  };
-  let mut select = wl_comment::Entity::find()
-    .filter(wl_comment::Column::Url.contains(&path))
-    .filter(wl_comment::Column::Pid.is_null())
-    .filter(wl_comment::Column::Status.is_not_in(["waiting", "spam"]));
+) -> Result<Value, AppError> {
+  if let Some(result) = state.comment_cache.lock().unwrap().get(path.clone(), page) {
+    return Ok(result);
+  }
+
   let mut is_admin = false;
   if let Ok(token) = token {
     if let Ok(email) = jwt::verify::<String>(&token, &state.jwt_token).map(|t| t.claims.data) {
-      if is_admin_user(&email, &state.conn).await.unwrap_or(false) {
+      if state
+        .repo
+        .user()
+        .is_admin_user(&email)
+        .await
+        .unwrap_or(false)
+      {
         is_admin = true;
-        select = wl_comment::Entity::find()
-          .filter(wl_comment::Column::Url.contains(&path))
-          .filter(wl_comment::Column::Pid.is_null());
       }
     }
   }
-  let paginator = select
-    .order_by(sort_col, sort_ord)
-    .paginate(&state.conn, page_size as u64);
-  let total_pages = paginator.num_pages().await.map_err(AppError::from)?;
-  let parrent_comments = paginator
-    .fetch_page((page - 1) as u64)
-    .await
-    .map_err(AppError::from)?;
+  let (
+    ItemsAndPagesNumber {
+      number_of_items,
+      number_of_pages,
+    },
+    parrent_comments,
+  ) = state
+    .repo
+    .comment()
+    .get_root_comment(&path, sort_by, page as u64, page_size as u64, is_admin)
+    .await?;
   // Get comment count for articles
-  let mut count = paginator.num_items().await.map_err(AppError::from)?;
-  let mut data = vec![];
+  let mut count = number_of_items;
+  let total_pages = number_of_pages;
+  let levels = state.levels.as_ref();
+  let mut comment_data = vec![];
+
   for parrent_comment in parrent_comments {
-    let c = wl_comment::Entity::find()
-      .filter(wl_comment::Column::Nick.eq(parrent_comment.clone().nick))
-      .filter(wl_comment::Column::Mail.eq(parrent_comment.clone().mail))
-      .count(&state.conn)
-      .await
-      .map_err(AppError::from)?;
-    // let level;
-    // if let Some(levels) = &state.levels {
-    //   level = Some(get_level(c as usize, levels));
-    // } else {
-    //   level = None;
-    // }
-
-    let level = state
-      .levels
-      .as_ref()
-      .map(|levels| get_level(c as usize, levels));
-
-    let mut parrent_data = build_data_entry(parrent_comment.clone(), level);
+    let c = state
+      .repo
+      .comment()
+      .get_comment_count_by_nick_and_mail(
+        parrent_comment.nick.clone(),
+        parrent_comment.mail.clone(),
+      )
+      .await?;
+    let level = levels.map(|levels| get_level(c as usize, levels));
+    let mut parrent_data = build_data_entry(
+      parrent_comment.clone(),
+      level,
+      &state.ip2region,
+      state.disable_useragent,
+      state.disable_region,
+    );
 
     if let Some(user_id) = parrent_data.user_id {
-      if let Ok(user) = get_user(UserQueryBy::Id(user_id as u32), &state.conn).await {
+      if let Some(user) = state.repo.user().get_user_by_id(user_id as u32).await? {
         parrent_data.label = user.label;
         parrent_data.r#type = Some(user.user_type);
       }
@@ -98,48 +93,38 @@ pub async fn get_comment_info(
       parrent_data.mail = parrent_comment.mail.clone();
       parrent_data.ip = parrent_comment.ip.clone();
     }
-    let mut subcomments = wl_comment::Entity::find()
-      .filter(wl_comment::Column::Url.contains(path.clone()))
-      .filter(wl_comment::Column::Pid.eq(parrent_comment.id))
-      .filter(wl_comment::Column::Status.is_not_in(["waiting", "spam"]))
-      .order_by(wl_comment::Column::InsertedAt, Order::Asc)
-      .all(&state.conn)
-      .await
-      .map_err(AppError::from)?;
-    if is_admin {
-      subcomments = wl_comment::Entity::find()
-        .filter(wl_comment::Column::Url.contains(path.clone()))
-        .filter(wl_comment::Column::Pid.eq(parrent_comment.id))
-        .order_by(wl_comment::Column::InsertedAt, Order::Asc)
-        .all(&state.conn)
-        .await
-        .map_err(AppError::from)?;
-    }
-    count += subcomments.len() as u64;
-    for subcomment in subcomments {
-      let c = wl_comment::Entity::find()
-        .filter(wl_comment::Column::Url.eq(parrent_comment.clone().url))
-        .filter(wl_comment::Column::Nick.eq(parrent_comment.clone().nick))
-        .filter(wl_comment::Column::Mail.eq(parrent_comment.clone().mail))
-        .count(&state.conn)
-        .await
-        .map_err(AppError::from)?;
-      // let level;
-      // if let Some(levels) = &state.levels {
-      //   level = Some(get_level(c as usize, levels));
-      // } else {
-      //   level = None;
-      // }
-      let level = state
-        .levels
-        .as_ref()
-        .map(|levels| get_level(c as usize, levels));
 
-      let mut subcomment_data = build_data_entry(subcomment.clone(), level);
+    let subcomments = state
+      .repo
+      .comment()
+      .get_subcomments(&path, parrent_comment.id, is_admin)
+      .await?;
+    count += subcomments.len() as u64;
+
+    for subcomment in subcomments {
+      let c = state
+        .repo
+        .comment()
+        .get_comment_count_by_nick_and_mail(
+          parrent_comment.nick.clone(),
+          parrent_comment.mail.clone(),
+        )
+        .await?;
+      let level = levels.map(|levels| get_level(c as usize, levels));
+      let mut subcomment_data = build_data_entry(
+        subcomment.clone(),
+        level,
+        &state.ip2region,
+        state.disable_useragent,
+        state.disable_region,
+      );
+
       if let Some(user_id) = subcomment_data.user_id {
-        let user = get_user(UserQueryBy::Id(user_id as u32), &state.conn).await?;
-        subcomment_data.label = user.label;
-        subcomment_data.r#type = Some(user.user_type);
+        let user = state.repo.user().get_user_by_id(user_id as u32).await?;
+        if let Some(user) = user {
+          subcomment_data.label = user.label;
+          subcomment_data.r#type = Some(user.user_type);
+        }
       }
       if is_admin {
         subcomment_data.mail = subcomment_data.mail.clone();
@@ -152,15 +137,22 @@ pub async fn get_comment_info(
       }));
       parrent_data.children.push(subcomment_data)
     }
-    data.push(parrent_data)
+    comment_data.push(parrent_data)
   }
-  Ok(json!({
+
+  let data = json!({
     "count": count,
-    "data": data,
+    "data": comment_data,
     "page": page,
     "pageSize": page_size,
     "totalPages": total_pages
-  }))
+  });
+  state
+    .comment_cache
+    .lock()
+    .unwrap()
+    .insert(path, page, data.clone());
+  Ok(data)
 }
 
 pub async fn get_comment_info_by_admin(
@@ -170,36 +162,30 @@ pub async fn get_comment_info_by_admin(
   keyword: String,
   status: String,
   page: i32,
-) -> Result<Value, Code> {
-  let mut comments = vec![];
-  let mut total_pages = 0;
-  if owner.clone() == "mine" {
-    let paginator = wl_comment::Entity::find()
-      .filter(wl_comment::Column::Mail.eq(email))
-      .filter(wl_comment::Column::Status.eq(status))
-      .filter(wl_comment::Column::Comment.contains(keyword))
-      .paginate(&state.conn, 10);
-    total_pages = paginator.num_pages().await.map_err(AppError::from)?;
-    comments = paginator
-      .fetch_page((page - 1) as u64)
-      .await
-      .map_err(AppError::from)?;
-  } else if owner == "all" {
-    let paginator = wl_comment::Entity::find()
-      .filter(wl_comment::Column::Status.eq(status))
-      .filter(wl_comment::Column::Comment.contains(keyword))
-      .paginate(&state.conn, 10);
-    total_pages = paginator.num_pages().await.map_err(AppError::from)?;
-    comments = paginator
-      .fetch_page((page - 1) as u64)
-      .await
-      .map_err(AppError::from)?;
-  }
+) -> Result<Value, AppError> {
+  let (
+    ItemsAndPagesNumber {
+      number_of_items: _,
+      number_of_pages,
+    },
+    comments,
+  ) = state
+    .repo
+    .comment()
+    .get_comments_list_by_admin(&email, &status, &keyword, page as u64, 10, owner)
+    .await?;
   let mut data = vec![];
+
   for comment in comments.iter() {
-    let mut data_entry = build_data_entry(comment.clone(), None);
+    let mut data_entry = build_data_entry(
+      comment.clone(),
+      None,
+      &state.ip2region,
+      state.disable_useragent,
+      state.disable_region,
+    );
     if let Some(user_id) = data_entry.user_id {
-      if let Ok(user) = get_user(UserQueryBy::Id(user_id as u32), &state.conn).await {
+      if let Some(user) = state.repo.user().get_user_by_id(user_id as u32).await? {
         data_entry.label = user.label;
         data_entry.r#type = Some(user.user_type);
       }
@@ -211,7 +197,7 @@ pub async fn get_comment_info_by_admin(
     "page": page,
     "pageSize": 10,
     "spamCount": 0,
-    "totalPages": total_pages,
+    "totalPages": number_of_pages,
     "waitingCount": 0,
   }))
 }
@@ -230,9 +216,10 @@ pub async fn create_comment<'a>(
   ip: String,
   user_type: UserType,
   lang: String,
-) -> Result<Value, Code> {
+) -> Result<Value, AppError> {
+  state.comment_cache.lock().unwrap().invalidate(&url);
   let html_output = render_md_to_html(&comment);
-  let mut avatar = get_avatar("anonymous");
+  let mut avatar = get_avatar("");
   let mut new_comment = create_comment_model(
     None,
     comment.clone(),
@@ -258,34 +245,29 @@ pub async fn create_comment<'a>(
         "waiting".to_string()
       } else if has_forbidden_word(&comment, &state.forbidden_words) {
         "spam".to_string()
+      } else if matches!(
+        check_comment(nick, mail, ip, comment).await?,
+        CheckResult::Ham
+      ) {
+        "approved".to_string()
       } else {
-        if matches!(
+        "spam".to_string()
+      });
+    }
+    UserType::Guest(email) => {
+      if let Some(user) = state.repo.user().get_user_by_email(&email).await? {
+        new_comment.user_id = Set(Some(user.id as i32));
+        new_comment.status = Set(if state.comment_audit {
+          "waiting".to_string()
+        } else if has_forbidden_word(&comment, &state.forbidden_words) {
+          "spam".to_string()
+        } else if matches!(
           check_comment(nick, mail, ip, comment).await?,
           CheckResult::Ham
         ) {
           "approved".to_string()
         } else {
           "spam".to_string()
-        }
-      });
-    }
-    UserType::Guest(email) => {
-      let user = get_user(UserQueryBy::Email(email), &state.conn).await;
-      if let Ok(user) = user {
-        new_comment.user_id = Set(Some(user.id as i32));
-        new_comment.status = Set(if state.comment_audit {
-          "waiting".to_string()
-        } else if has_forbidden_word(&comment, &state.forbidden_words) {
-          "spam".to_string()
-        } else {
-          if matches!(
-            check_comment(nick, mail, ip, comment).await?,
-            CheckResult::Ham
-          ) {
-            "approved".to_string()
-          } else {
-            "spam".to_string()
-          }
         });
         data["label"] = json!(user.label);
         data["mail"] = json!(user.email);
@@ -295,8 +277,7 @@ pub async fn create_comment<'a>(
       }
     }
     UserType::Administrator(email) => {
-      let user = get_user(UserQueryBy::Email(email), &state.conn).await;
-      if let Ok(user) = user {
+      if let Some(user) = state.repo.user().get_user_by_email(&email).await? {
         new_comment.user_id = Set(Some(user.id as i32));
         new_comment.status = Set("approved".to_string());
         data["label"] = json!(user.label);
@@ -307,10 +288,7 @@ pub async fn create_comment<'a>(
       }
     }
   }
-  let comment = new_comment
-    .insert(&state.conn)
-    .await
-    .map_err(AppError::from)?;
+  let comment = state.repo.comment().create_comment(new_comment).await?;
   data["avatar"] = json!(avatar);
   data["like"] = json!(comment.like);
   data["ip"] = json!(comment.ip);
@@ -328,7 +306,7 @@ pub async fn create_comment<'a>(
     data["rid"] = json!(rid);
   };
   spawn(async move {
-    send_email_notification(CommentNotification {
+    send_email_notification(Notification {
       sender_name: comment.nick.unwrap(),
       sender_email: comment.mail.unwrap(),
       comment_id: comment.id,
@@ -341,26 +319,25 @@ pub async fn create_comment<'a>(
   Ok(data)
 }
 
-pub async fn delete_comment(state: &AppState, id: u32, email: String) -> Result<(), Code> {
-  let user = get_user(UserQueryBy::Email(email.clone()), &state.conn).await?;
+pub async fn delete_comment(state: &AppState, id: u32, token: String) -> Result<(), AppError> {
+  let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
+  let user = state
+    .repo
+    .user()
+    .get_user_by_email(&email)
+    .await?
+    .ok_or(AppError::UserNotFound)?;
   let pass = if user.user_type == "administrator" {
     true
   } else {
-    wl_comment::Entity::find()
-      .filter(wl_comment::Column::Id.eq(id))
-      .filter(wl_comment::Column::UserId.eq(user.id))
-      .one(&state.conn)
-      .await
-      .map_err(AppError::from)?
-      .is_some()
+    state.repo.comment().is_comment_owner(id, user.id).await?
   };
   if !pass {
-    return Err(Code::Forbidden);
+    return Err(AppError::Forbidden);
   }
-  match wl_comment::Entity::delete_by_id(id).exec(&state.conn).await {
-    Ok(_) => Ok(()),
-    Err(_) => Err(Code::Error),
-  }
+  state.repo.comment().delete_comment(id).await?;
+  state.comment_cache.lock().unwrap().clear();
+  Ok(())
 }
 
 pub async fn update_comment(
@@ -376,65 +353,79 @@ pub async fn update_comment(
   ua: Option<String>,
   url: Option<String>,
   sticky: Option<i8>,
-) -> Result<Value, Code> {
+) -> Result<Value, AppError> {
   let mut active_comment = wl_comment::ActiveModel {
     id: Set(id),
     updated_at: Set(Some(time::utc_now())),
     ..Default::default()
   };
-  let user = get_user(UserQueryBy::Email(email), &state.conn).await?;
-  let comment_opt = wl_comment::Entity::find()
-    .filter(wl_comment::Column::Id.eq(id))
-    .filter(wl_comment::Column::UserId.eq(user.id))
-    .one(&state.conn)
-    .await
-    .map_err(AppError::from)?;
-  if comment_opt.is_none() {
-    return Err(Code::Forbidden);
+
+  let user = state
+    .repo
+    .user()
+    .get_user_by_email(&email)
+    .await?
+    .ok_or(AppError::UserNotFound)?;
+
+  if !state.repo.comment().is_comment_owner(id, user.id).await? && user.user_type != "administrator"
+  {
+    return Err(AppError::Forbidden);
   }
+
   if let Some(like) = like {
-    let comment = get_comment(CommentQueryBy::Id(id), &state.conn).await?;
+    let comment = state
+      .repo
+      .comment()
+      .get_comment(id)
+      .await?
+      .ok_or(AppError::Error)?;
     active_comment.like = Set(Some(comment.like.unwrap_or(0) + if like { 1 } else { -1 }));
   }
+
   if let Some(status) = status {
     active_comment.status = Set(status);
   }
+
   if let Some(sticky) = sticky {
     active_comment.sticky = Set(Some(sticky));
   }
+
   if let Some(comment) = comment {
     active_comment.comment = Set(Some(comment));
   }
+
   if let Some(ua) = ua {
     active_comment.ua = Set(Some(ua));
   }
+
   if let Some(nick) = nick {
     active_comment.nick = Set(Some(nick));
   }
+
   if let Some(link) = link {
     active_comment.link = Set(Some(link));
   }
+
   if let Some(mail) = mail {
     active_comment.mail = Set(Some(mail));
   }
+
   if let Some(url) = url {
     active_comment.url = Set(Some(url));
   }
 
-  let updated_comment = active_comment
-    .update(&state.conn)
-    .await
-    .map_err(AppError::from)?;
+  let updated_comment = state.repo.comment().update_comment(active_comment).await?;
+  state.comment_cache.lock().unwrap().clear();
   let (browser, os) = ua::parse(updated_comment.ua.unwrap_or("".to_owned()));
   let like = updated_comment.like.unwrap_or(0);
   let time = updated_comment.created_at.unwrap().timestamp_millis();
   let pid = updated_comment.pid;
   let rid = updated_comment.rid;
   let html_output = render_md_to_html(updated_comment.comment.clone().unwrap().as_str());
-  if is_anonymous(id, &state.conn).await? {
+  if state.repo.comment().is_anonymous(id).await? {
     let data = json!({
       "addr":"",
-      "avatar": get_avatar("anonymous"),
+      "avatar": get_avatar(""),
       "browser": browser,
       "comment": html_output,
       "ip": updated_comment.ip,
@@ -452,11 +443,12 @@ pub async fn update_comment(
     });
     Ok(data)
   } else {
-    let user = get_user(
-      UserQueryBy::Id(updated_comment.user_id.unwrap() as u32),
-      &state.conn,
-    )
-    .await?;
+    let user = state
+      .repo
+      .user()
+      .get_user_by_id(updated_comment.user_id.unwrap() as u32)
+      .await?
+      .ok_or(AppError::UserNotFound)?;
     let mut data = json!({
       "addr":"",
       "avatar": get_avatar(&user.email),

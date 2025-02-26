@@ -10,7 +10,7 @@ pub use user::UserRepository;
 
 #[derive(Debug, Clone)]
 pub struct RepositoryManager {
-  db: DatabaseConnection,
+  pub db: DatabaseConnection,
 }
 
 impl RepositoryManager {

@@ -17,11 +17,10 @@ pub fn extract_token(req: &HttpRequest) -> Result<String, AppError> {
   let auth_header = req
     .headers()
     .get("Authorization")
-    .ok_or(AppError::Authorization)?
-    .to_str()
-    .map_err(AppError::from)?;
+    .ok_or(AppError::Unauthorized)?
+    .to_str()?;
   if !auth_header.starts_with("Bearer ") {
-    return Err(AppError::Error);
+    return Err(AppError::Unauthorized);
   }
   Ok(auth_header[7..].to_string()) // Skip "Bearer " prefix
 }
@@ -53,7 +52,16 @@ pub fn extract_host(req: &HttpRequest) -> String {
 pub fn extract_referer(req: &HttpRequest) -> String {
   req
     .headers()
-    .get("referer")
+    .get("Referer")
+    .and_then(|h| h.to_str().ok())
+    .unwrap_or_default()
+    .to_string()
+}
+
+pub fn extract_origin(req: &HttpRequest) -> String {
+  req
+    .headers()
+    .get("Origin")
     .and_then(|h| h.to_str().ok())
     .unwrap_or_default()
     .to_string()

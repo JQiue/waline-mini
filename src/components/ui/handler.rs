@@ -60,6 +60,13 @@ pub async fn ui_user_page() -> HttpResponse {
     .body(service::admin_page().await)
 }
 
+#[get("/forgot")]
+pub async fn ui_forgot_page() -> HttpResponse {
+  HttpResponse::Ok()
+    .content_type(ContentType::html())
+    .body(service::admin_page().await)
+}
+
 pub async fn ui_page() -> HttpResponse {
   HttpResponse::Ok()
     .content_type(ContentType::html())

@@ -1,4 +1,4 @@
-use helpers::time::utc_now;
+use helpers::hash;
 
 pub fn get_avatar(plain: &str) -> String {
   let re = regex::Regex::new(r"^\d+@qq\.com$").unwrap();
@@ -6,6 +6,7 @@ pub fn get_avatar(plain: &str) -> String {
     let number = plain.split("@").next().unwrap();
     format!("https://q1.qlogo.cn/g?b=qq&nk={}&s=100", number)
   } else {
-    format!("https://api.multiavatar.com/{}.png", utc_now())
+    // format!("https://api.multiavatar.com/{}.png", utc_now())
+    format!("https://cravatar.cn/avatar/{}", hash::md5("".as_bytes()))
   }
 }
