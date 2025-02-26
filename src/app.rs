@@ -26,6 +26,7 @@ use actix_web::{
   App, HttpResponse, HttpServer,
 };
 use sea_orm::Database;
+use serde_json::Value;
 use tracing::info;
 
 #[derive(Debug)]
@@ -63,6 +64,37 @@ impl RateLimiter {
 }
 
 #[derive(Clone)]
+pub struct CommentCache {
+  pub cache: Arc<Mutex<HashMap<(String, i32), Value>>>,
+}
+
+impl CommentCache {
+  fn new() -> Self {
+    CommentCache {
+      cache: Arc::new(Mutex::new(HashMap::new())),
+    }
+  }
+
+  pub fn get(&self, path: String, page: i32) -> Option<Value> {
+    let cache = self.cache.lock().unwrap().get(&(path, page)).cloned();
+    cache
+  }
+
+  pub fn insert(&mut self, path: String, page: i32, data: Value) {
+    self.cache.lock().unwrap().insert((path, page), data);
+  }
+
+  pub fn invalidate(&self, path: &str) {
+    let mut cache = self.cache.lock().unwrap();
+    cache.retain(|(old_path, _), _| old_path != path);
+  }
+
+  pub fn clear(&self) {
+    self.cache.lock().unwrap().clear();
+  }
+}
+
+#[derive(Clone)]
 pub struct AppState {
   pub repo: RepositoryManager,
   pub rate_limiter: Arc<RateLimiter>,
@@ -73,6 +105,7 @@ pub struct AppState {
   pub forbidden_words: Vec<String>,
   pub disable_useragent: bool,
   pub disable_region: bool,
+  pub comment_cache: Arc<Mutex<CommentCache>>,
   pub ip2region: Option<Ip2Region>,
 }
 
@@ -115,10 +148,13 @@ pub async fn start() -> Result<(), AppError> {
   } = EnvConfig::load_env()?;
   let conn = Database::connect(database_url).await?;
   conn.ping().await?;
+  let comment_cache = CommentCache::new();
+   let mut ip2region = None;
+  
   if akismet_key != "false" {
     info!("The anti-spam system has been activated")
   }
-  let mut ip2region = None;
+
   if let Some(ip2region_db) = ip2region_db {
     ip2region = Ip2Region::new(&ip2region_db).ok();
   } else {
@@ -134,6 +170,7 @@ pub async fn start() -> Result<(), AppError> {
     disable_useragent,
     disable_region,
     ip2region,
+    comment_cache: Arc::new(Mutex::new(comment_cache)),
     rate_limiter: Arc::new(RateLimiter::new(ipqps)),
   };
   Ok(
