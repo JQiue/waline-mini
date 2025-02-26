@@ -13,7 +13,7 @@ use crate::{
   entities::wl_comment,
   helpers::{
     avatar::get_avatar,
-    email::{send_email_notification, CommentNotification, NotifyType},
+    email::{send_email_notification, Notification, NotifyType},
     markdown::render_md_to_html,
     spam::check_comment,
     ua,
@@ -77,6 +77,7 @@ pub async fn get_comment_info(
     let mut parrent_data = build_data_entry(
       parrent_comment.clone(),
       level,
+      &state.ip2region,
       state.disable_useragent,
       state.disable_region,
     );
@@ -113,6 +114,7 @@ pub async fn get_comment_info(
       let mut subcomment_data = build_data_entry(
         subcomment.clone(),
         level,
+        &state.ip2region,
         state.disable_useragent,
         state.disable_region,
       );
@@ -178,6 +180,7 @@ pub async fn get_comment_info_by_admin(
     let mut data_entry = build_data_entry(
       comment.clone(),
       None,
+      &state.ip2region,
       state.disable_useragent,
       state.disable_region,
     );
@@ -303,7 +306,7 @@ pub async fn create_comment<'a>(
     data["rid"] = json!(rid);
   };
   spawn(async move {
-    send_email_notification(CommentNotification {
+    send_email_notification(Notification {
       sender_name: comment.nick.unwrap(),
       sender_email: comment.mail.unwrap(),
       comment_id: comment.id,

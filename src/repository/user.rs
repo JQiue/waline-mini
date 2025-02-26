@@ -26,10 +26,7 @@ impl<'a> UserRepository<'a> {
     self.get_user(UserQueryBy::Id(id)).await
   }
 
-  pub async fn get_user(
-    &self,
-    query_by: UserQueryBy<'a>,
-  ) -> Result<Option<wl_users::Model>, DbErr> {
+  async fn get_user(&self, query_by: UserQueryBy<'a>) -> Result<Option<wl_users::Model>, DbErr> {
     let mut select = wl_users::Entity::find();
     match query_by {
       UserQueryBy::Id(id) => select = select.filter(wl_users::Column::Id.eq(id)),

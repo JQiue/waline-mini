@@ -23,6 +23,11 @@ fn zh_cn() -> TranslationMap {
     "请点击 <a href='{url}'>{url}</a> 确认注册，链接有效时间为 1 个小时。如果不是你在注册，请忽略这封邮件。",
   );
   m.insert("Registration confirm mail send failed", "注册确认邮件发送失败，请{%- if isAdmin -%}检查一下网站的邮件相关配置{% else %}确认你的邮箱输入无误并联系管理员{%- endif -%}。");
+  m.insert("Reset Password", "【{name}】重置密码");
+  m.insert(
+    "Please click link to login and change your password as soon as possible!",
+    "请尽快点击链接 <a href=\"{url}\">{url}</a> 登录并修改你的密码！",
+  );
   m
 }
 
@@ -47,6 +52,11 @@ fn zh_tw() -> TranslationMap {
   m.insert(
     "Registration confirm mail send failed",
     "註冊確認郵件發送失敗，{%- if isAdmin -%}檢查一下網站的郵件相關配置{% else %}確認你的郵箱輸入無誤後聯繫管理員{%- endif -%}。",
+  );
+  m.insert("Reset Password", "『{name}』重置密碼");
+  m.insert(
+    "Please click link to login and change your password as soon as possible!",
+    "請盡快點擊鏈接 <a href=\"{url}\">{url}</a> 登錄並修改你的密碼！",
   );
   m
 }
@@ -76,6 +86,11 @@ fn en() -> TranslationMap {
   );
   m.insert("confirm registration", "Please click <a href=\"{url}\">{url}<a/> to confirm registration, the link is valid for 1 hour. If you are not registering, please ignore this email.");
   m.insert("Registration confirm mail send failed", "Registration confirm mail send failed, please {%- if isAdmin -%}check your mail configuration{%- else -%}check your email address and contact administrator{%- endif -%}.");
+  m.insert("Reset Password", "[{name}] Reset Password");
+  m.insert(
+    "Please click link to login and change your password as soon as possible!",
+    "Please click <a href=\"{url}\">{url}</a> to login and change your password as soon as possible!",
+  );
   m
 }
 
