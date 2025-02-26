@@ -1,6 +1,6 @@
 use helpers::time::utc_now;
 use sea_orm::{IntoActiveModel, Set};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::prelude::*;
 use crate::{app::AppState, entities::wl_counter};
@@ -13,13 +13,13 @@ pub async fn get_article(
   let mut data = vec![];
   if r#type == "time" {
     for path in path.split(',') {
-      if let Some(counter) = state.repo.counter().get_counter(path).await? {
+      match state.repo.counter().get_counter(path).await? { Some(counter) => {
         data.push(json!({"time": counter.time}));
-      } else {
+      } _ => {
         data.push(json!({"time": 0}));
-      }
+      }}
     }
-  } else if let Some(counter) = state.repo.counter().get_counter(&path).await? {
+  } else { match state.repo.counter().get_counter(&path).await? { Some(counter) => {
     data.push(json!({
       "reaction0": counter.reaction0,
       "reaction1": counter.reaction1,
@@ -28,7 +28,7 @@ pub async fn get_article(
       "reaction4": counter.reaction4,
       "reaction5": counter.reaction5,
     }));
-  }
+  } _ => {}}}
   Ok(data)
 }
 
@@ -40,15 +40,15 @@ pub async fn update_article(
 ) -> Result<Vec<wl_counter::Model>, AppError> {
   let mut data = vec![];
   if r#type == "time" {
-    if let Some(counter) = state.repo.counter().get_counter(&path).await? {
+    match state.repo.counter().get_counter(&path).await? { Some(counter) => {
       let time = counter.time.unwrap_or(0) + 1;
       let mut active_counter = counter.into_active_model();
       active_counter.time = Set(Some(time));
       active_counter.updated_at = Set(Some(utc_now()));
       data.push(state.repo.counter().update_counter(active_counter).await?)
-    } else {
+    } _ => {
       data.push(state.repo.counter().create_counter(path).await?)
-    };
+    }};
   } else {
     fn set_reaction_value(
       mut counter: wl_counter::Model,

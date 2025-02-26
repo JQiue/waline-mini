@@ -1,7 +1,6 @@
 use actix_web::{
-  delete, get, post, put,
+  HttpRequest, HttpResponse, delete, get, post, put,
   web::{Data, Json, Path, Query},
-  HttpRequest, HttpResponse,
 };
 use helpers::jwt;
 
@@ -101,7 +100,7 @@ async fn create_comment(
   let mut user_type = UserType::Anonymous;
   let mut is_admin = false;
   let client_ip = extract_ip(&req);
-  let pass = if let Ok(token) = extract_token(&req) {
+  let pass = match extract_token(&req) { Ok(token) => {
     match jwt::verify::<String>(&token, &state.jwt_token) {
       Ok(verified_token) => {
         if state
@@ -124,12 +123,12 @@ async fn create_comment(
         return HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang)));
       }
     }
-  } else {
+  } _ => {
     if &state.login == "force" {
       return HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang)));
     }
     state.rate_limiter.check_and_update(&client_ip, 1)
-  };
+  }};
   if !pass {
     return HttpResponse::Ok().json(Response::<()>::error(
       AppError::FrequencyLimited,
@@ -234,7 +233,7 @@ async fn update_comment(
       Err(err) => return HttpResponse::Ok().json(Response::<()>::error(err, None)),
     }
   }
-  if let Ok(token) = extract_token(&req) {
+  match extract_token(&req) { Ok(token) => {
     match jwt::verify::<String>(&token, &state.jwt_token) {
       Ok(data) => match service::update_comment(
         &state,
@@ -257,7 +256,7 @@ async fn update_comment(
       },
       Err(_) => HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None)),
     }
-  } else {
+  } _ => {
     HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None))
-  }
+  }}
 }

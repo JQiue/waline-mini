@@ -7,6 +7,6 @@ pub fn get_avatar(plain: &str) -> String {
     format!("https://q1.qlogo.cn/g?b=qq&nk={}&s=100", number)
   } else {
     // format!("https://api.multiavatar.com/{}.png", utc_now())
-    format!("https://cravatar.cn/avatar/{}", hash::md5("".as_bytes()))
+    format!("https://cravatar.cn/avatar/{}", hash::md5(""))
   }
 }

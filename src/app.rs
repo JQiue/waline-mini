@@ -21,9 +21,8 @@ use crate::{
 
 use actix_cors::Cors;
 use actix_web::{
-  middleware,
+  App, HttpResponse, HttpServer, middleware,
   web::{self, ServiceConfig},
-  App, HttpResponse, HttpServer,
 };
 use sea_orm::Database;
 use serde_json::Value;
@@ -149,8 +148,8 @@ pub async fn start() -> Result<(), AppError> {
   let conn = Database::connect(database_url).await?;
   conn.ping().await?;
   let comment_cache = CommentCache::new();
-   let mut ip2region = None;
-  
+  let mut ip2region = None;
+
   if akismet_key != "false" {
     info!("The anti-spam system has been activated")
   }

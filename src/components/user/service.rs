@@ -8,7 +8,7 @@ use sea_orm::{
   ColumnTrait, EntityTrait, IntoActiveModel, Iterable, PaginatorTrait, QueryFilter, QuerySelect,
   Set,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use totp_rs::{Secret, TOTP};
 
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
   entities::*,
   helpers::{
     avatar::get_avatar,
-    email::{send_email_notification, Notification, NotifyType},
+    email::{Notification, NotifyType, send_email_notification},
   },
   prelude::AppError,
 };
@@ -37,71 +37,74 @@ pub async fn user_register(
   let hashed = hash::bcrypt_custom(&password, 8, helpers::hash::Version::TwoA)?;
   let EnvConfig { site_name, .. } = EnvConfig::load_env()?;
 
-  if let Some(user) = state.repo.user().get_user_by_email(&email).await? {
-    if user.user_type != "administrator" || user.user_type != "guest" {
-      let mut active_user = user.into_active_model();
-      active_user.display_name = Set(display_name);
-      active_user.url = Set(Some(url));
-      active_user.password = Set(hashed);
-      let token = uuid::uuid(&Alphabet::NUMBERS, 4);
-      active_user.user_type = Set(format!(
-        "verify:{}:{}",
-        token,
-        utc_now().timestamp_millis() + 60 * 60 * 1000
-      ));
-      let url = format!(
-        "http://{}/api/verification?token={}&email={}",
-        host_header, token, email
-      );
-      send_email_notification(Notification {
-        sender_name: site_name,
-        sender_email: email,
-        comment_id: 0,
-        comment: "".to_string(),
-        url,
-        notify_type: NotifyType::RegisterUser,
-        lang: Some(lang),
-      });
-      state.repo.user().update_user(active_user).await?;
-      return Ok(data);
-    }
+  match state.repo.user().get_user_by_email(&email).await? {
+    Some(user) => {
+      if user.user_type != "administrator" || user.user_type != "guest" {
+        let mut active_user = user.into_active_model();
+        active_user.display_name = Set(display_name);
+        active_user.url = Set(Some(url));
+        active_user.password = Set(hashed);
+        let token = uuid::uuid(&Alphabet::NUMBERS, 4);
+        active_user.user_type = Set(format!(
+          "verify:{}:{}",
+          token,
+          utc_now().timestamp_millis() + 60 * 60 * 1000
+        ));
+        let url = format!(
+          "http://{}/api/verification?token={}&email={}",
+          host_header, token, email
+        );
+        send_email_notification(Notification {
+          sender_name: site_name,
+          sender_email: email,
+          comment_id: 0,
+          comment: "".to_string(),
+          url,
+          notify_type: NotifyType::RegisterUser,
+          lang: Some(lang),
+        });
+        state.repo.user().update_user(active_user).await?;
+        return Ok(data);
+      }
 
-    Err(AppError::UserRegistered)
-  } else {
-    let mut active_user: wl_users::ActiveModel = wl_users::ActiveModel {
-      display_name: Set(display_name),
-      email: Set(email.clone()),
-      url: Set(Some(url)),
-      password: Set(hashed),
-      ..Default::default()
-    };
-
-    if state.repo.user().is_first_user().await? {
-      active_user.user_type = Set("administrator".to_string());
-      data = json!({});
-    } else {
-      let token = uuid::uuid(&Alphabet::NUMBERS, 4);
-      active_user.user_type = Set(format!(
-        "verify:{}:{}",
-        token,
-        utc_now().timestamp_millis() + 60 * 60 * 1000
-      ));
-      let url = format!(
-        "http://{}/api/verification?token={}&email={}",
-        host_header, token, email
-      );
-      send_email_notification(Notification {
-        sender_name: site_name,
-        sender_email: email,
-        comment_id: 0,
-        comment: "".to_string(),
-        url,
-        notify_type: NotifyType::RegisterUser,
-        lang: Some(lang),
-      });
+      Err(AppError::UserRegistered)
     }
-    state.repo.user().create_user(active_user).await?;
-    Ok(data)
+    _ => {
+      let mut active_user: wl_users::ActiveModel = wl_users::ActiveModel {
+        display_name: Set(display_name),
+        email: Set(email.clone()),
+        url: Set(Some(url)),
+        password: Set(hashed),
+        ..Default::default()
+      };
+
+      if state.repo.user().is_first_user().await? {
+        active_user.user_type = Set("administrator".to_string());
+        data = json!({});
+      } else {
+        let token = uuid::uuid(&Alphabet::NUMBERS, 4);
+        active_user.user_type = Set(format!(
+          "verify:{}:{}",
+          token,
+          utc_now().timestamp_millis() + 60 * 60 * 1000
+        ));
+        let url = format!(
+          "http://{}/api/verification?token={}&email={}",
+          host_header, token, email
+        );
+        send_email_notification(Notification {
+          sender_name: site_name,
+          sender_email: email,
+          comment_id: 0,
+          comment: "".to_string(),
+          url,
+          notify_type: NotifyType::RegisterUser,
+          lang: Some(lang),
+        });
+      }
+      state.repo.user().create_user(active_user).await?;
+      Ok(data)
+    }
   }
 }
 
@@ -135,7 +138,7 @@ pub async fn user_login(
     }
   }
   let token = jwt::sign(email, &state.jwt_token, 2592000)?;
-  let mail_md5 = hash::md5(user.email.as_bytes());
+  let mail_md5 = hash::md5(&user.email);
   let data = json!({
     "display_name": user.display_name,
     "email": user.email,
@@ -168,7 +171,7 @@ pub async fn get_login_user_info(state: &AppState, token: String) -> Result<Valu
     .get_user_by_email(&email)
     .await?
     .ok_or(AppError::UserNotFound)?;
-  let mail_md5 = hash::md5(user.email.as_bytes());
+  let mail_md5 = hash::md5(&user.email);
   Ok(json! ({
       "display_name": user.display_name,
       "email": user.email,
@@ -415,20 +418,23 @@ pub async fn modify_password(
     return Err(AppError::Error);
   }
 
-  if let Some(user) = state.repo.user().get_user_by_email(&email).await? {
-    let token = jwt::sign(user.email.clone(), &state.jwt_token, 300)?;
-    let url = format!("{}/ui/profile?token={}", origin, token);
-    send_email_notification(Notification {
-      notify_type: NotifyType::ResetPassword,
-      sender_name: "".to_owned(),
-      sender_email: user.email,
-      comment_id: 0,
-      comment: "".to_owned(),
-      url,
-      lang: Some(lang),
-    });
-  } else {
-    return Err(AppError::Error);
+  match state.repo.user().get_user_by_email(&email).await? {
+    Some(user) => {
+      let token = jwt::sign(user.email.clone(), &state.jwt_token, 300)?;
+      let url = format!("{}/ui/profile?token={}", origin, token);
+      send_email_notification(Notification {
+        notify_type: NotifyType::ResetPassword,
+        sender_name: "".to_owned(),
+        sender_email: user.email,
+        comment_id: 0,
+        comment: "".to_owned(),
+        url,
+        lang: Some(lang),
+      });
+    }
+    _ => {
+      return Err(AppError::Error);
+    }
   }
 
   Ok(json!(()))

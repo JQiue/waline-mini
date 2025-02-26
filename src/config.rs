@@ -1,6 +1,6 @@
 //! config
 
-use serde::{de::Deserializer, Deserialize};
+use serde::{Deserialize, de::Deserializer};
 
 use crate::error::AppError;
 

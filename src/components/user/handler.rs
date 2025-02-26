@@ -1,9 +1,8 @@
 use actix_web::{
-  delete, get,
+  HttpRequest, HttpResponse, delete, get,
   http::{self, header::AUTHORIZATION},
   post, put,
   web::{Data, Json, Path, Query},
-  HttpRequest, HttpResponse,
 };
 
 use crate::{
@@ -69,14 +68,14 @@ pub async fn user_logout() -> HttpResponse {
 
 #[get("/token")]
 async fn get_login_user_info(req: HttpRequest, state: Data<AppState>) -> HttpResponse {
-  if let Some(token) = extract_token_from_header(&req.headers().get(AUTHORIZATION)) {
+  match extract_token_from_header(&req.headers().get(AUTHORIZATION)) { Some(token) => {
     match service::get_login_user_info(&state, token).await {
       Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
       Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
     }
-  } else {
+  } _ => {
     HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None))
-  }
+  }}
 }
 
 #[put("/user")]
@@ -184,7 +183,7 @@ pub async fn get_2fa(
   query: Query<Get2faQuery>,
 ) -> HttpResponse {
   let Query(Get2faQuery { lang, email }) = query;
-  let token = extract_token(&req).map_or(None, |token| Some(token));
+  let token = extract_token(&req).map_or(None, Some);
   match service::get_2fa(&state, token, email).await {
     Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
     Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),

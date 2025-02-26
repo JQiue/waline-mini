@@ -5,7 +5,7 @@ use helpers::{
 };
 use instant_akismet::CheckResult;
 use sea_orm::{ItemsAndPagesNumber, Set};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::{
   app::AppState,
@@ -13,7 +13,7 @@ use crate::{
   entities::wl_comment,
   helpers::{
     avatar::get_avatar,
-    email::{send_email_notification, Notification, NotifyType},
+    email::{Notification, NotifyType, send_email_notification},
     markdown::render_md_to_html,
     spam::check_comment,
     ua,

@@ -2,7 +2,7 @@ use crate::entities::{
   wl_comment::Entity as Comment, wl_counter::Entity as Counter, wl_users::Entity as User,
 };
 use chrono::{Local, Utc};
-use sea_orm::{prelude::DateTimeUtc, DerivePartialModel, FromQueryResult};
+use sea_orm::{DerivePartialModel, FromQueryResult, prelude::DateTimeUtc};
 use serde::{Deserialize, Serialize, Serializer};
 
 #[derive(Deserialize)]
