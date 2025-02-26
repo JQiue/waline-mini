@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use crate::{
   entities::wl_comment,
-  helpers::{avatar::get_avatar, markdown::render_md_to_html, ua},
+  helpers::{avatar::get_avatar, ip::Ip2Region, markdown::render_md_to_html, ua},
 };
 
 #[derive(Serialize, Clone)]
@@ -70,6 +70,7 @@ pub fn get_level(count: usize, levels: &str) -> usize {
 pub fn build_data_entry(
   comment: wl_comment::Model,
   level: Option<usize>,
+  ip2region: &Option<Ip2Region>,
   disable_useragent: bool,
   disable_region: bool,
 ) -> DataEntry {
@@ -80,6 +81,13 @@ pub fn build_data_entry(
   };
   let addr = if disable_region {
     Some("".to_string())
+  } else if let Some(ip) = comment.ip {
+    let ip = if let Some(ip2region) = ip2region {
+      ip2region.search(&ip)
+    } else {
+      None
+    };
+    ip
   } else {
     None
   };
