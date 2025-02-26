@@ -32,7 +32,7 @@ Waline-mini 是原 Waline 评论系统的轻量级 Rust 实现，使用的内存
 | 文章反应                 | 完全可用 | 稳定   |
 | 评论格式支持             | 完全可用 | 稳定   |
 | 用户标签                 | 完全可用 | 稳定   |
-| 国际化                   | 几乎可用 | 进行中 |
+| 国际化                   | 完全可用 | 稳定   |
 | 邮件通知                 | 几乎可用 | 进行中 |
 | 安全性：跨站脚本攻击     | 完全可用 | 稳定   |
 | 安全性：频率限制         | 完全可用 | 稳定   |
@@ -127,6 +127,7 @@ git clone -b shuttle https://github.com/JQiue/waline-mini.git
 | DISABLE_AUTHORE_NOTIFY | 是否禁止新评论通知                                                                                                          |          | `false`        |
 | DISABLE_REGION         | 是否隐藏评论者的归属地                                                                                                      |          | `false`        |
 | DISABLE_USERAGENT      | 是否隐藏评论者的 UA                                                                                                         |          | `false`        |
+| IP2REGION_DB           | 自定义 IP 查询库路径，waline-mini waline-mini 并不包含 xdb 文件，需要手动提供                                               |          |                |
 
 ## 常见问题
 

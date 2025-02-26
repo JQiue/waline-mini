@@ -32,7 +32,7 @@ In my Ubuntu server, the waline-mini requires only about `5612Kb=5.48MB` of memo
 | Article Reactions            | Fully        | Stable      |
 | Comment Format Support       | Fully        | Stable      |
 | User Label                   | Fully        | Stable      |
-| I18n Support                 | Nearly       | In Progress |
+| I18n Support                 | Fully        | Stable      |
 | Email Notification           | Nearly       | In Progress |
 | Security: XSS                | Fully        | Stable      |
 | Security: Frequency Limit    | Fully        | Stable      |
@@ -125,6 +125,7 @@ Configure waline-mini with environment variables:
 | DISABLE_AUTHORE_NOTIFY | wether disable author notification                                                                                                                                                          |         | `false`        |
 | DISABLE_REGION         | wether hide commenter's region. Default value is false                                                                                                                                      |         | `false`        |
 | DISABLE_USERAGENT      | wether hide the user agent of commenter. Default value is false                                                                                                                             |         | `false`        |
+| IP2REGION_DB           | customized IP query library path. The waline-mini does not contain xdb files and needs to be provided manually                                                                              |         |
 
 ## FAQ
 
