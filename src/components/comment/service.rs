@@ -73,6 +73,7 @@ pub async fn get_comment_info(
     let mut parrent_data = build_data_entry(
       parrent_comment.clone(),
       level,
+      &state.ip2region,
       state.disable_useragent,
       state.disable_region,
     );
@@ -109,6 +110,7 @@ pub async fn get_comment_info(
       let mut subcomment_data = build_data_entry(
         subcomment.clone(),
         level,
+        &state.ip2region,
         state.disable_useragent,
         state.disable_region,
       );
@@ -169,6 +171,7 @@ pub async fn get_comment_info_by_admin(
     let mut data_entry = build_data_entry(
       comment.clone(),
       None,
+      &state.ip2region,
       state.disable_useragent,
       state.disable_region,
     );

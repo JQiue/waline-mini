@@ -15,6 +15,7 @@ use crate::{
   },
   config::EnvConfig,
   error::AppError,
+  helpers::ip::Ip2Region,
   repository::RepositoryManager,
 };
 
@@ -72,6 +73,7 @@ pub struct AppState {
   pub forbidden_words: Vec<String>,
   pub disable_useragent: bool,
   pub disable_region: bool,
+  pub ip2region: Option<Ip2Region>,
 }
 
 async fn health_check() -> HttpResponse {
@@ -108,12 +110,19 @@ pub async fn start() -> Result<(), AppError> {
     forbidden_words,
     disable_useragent,
     disable_region,
+    ip2region_db,
     ..
   } = EnvConfig::load_env()?;
   let conn = Database::connect(database_url).await?;
   conn.ping().await?;
   if akismet_key != "false" {
     info!("The anti-spam system has been activated")
+  }
+  let mut ip2region = None;
+  if let Some(ip2region_db) = ip2region_db {
+    ip2region = Ip2Region::new(&ip2region_db).ok();
+  } else {
+    tracing::info!("The ip region cannot be obtained because xdb is not provided!")
   }
   let state = AppState {
     repo: RepositoryManager::new(conn.clone()),
@@ -124,6 +133,7 @@ pub async fn start() -> Result<(), AppError> {
     forbidden_words,
     disable_useragent,
     disable_region,
+    ip2region,
     rate_limiter: Arc::new(RateLimiter::new(ipqps)),
   };
   Ok(

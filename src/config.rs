@@ -89,6 +89,7 @@ pub struct EnvConfig {
   pub disable_useragent: bool,
   #[serde(default = "default_false")]
   pub disable_region: bool,
+  pub ip2region_db: Option<String>,
 }
 
 impl EnvConfig {
