@@ -9,7 +9,7 @@ pub struct CommentRepository<'a> {
   pub db: &'a DatabaseConnection,
 }
 
-impl<'a> CommentRepository<'a> {
+impl CommentRepository<'_> {
   pub async fn get_comment(&self, id: u32) -> Result<Option<wl_comment::Model>, DbErr> {
     wl_comment::Entity::find()
       .filter(wl_comment::Column::Id.eq(id))

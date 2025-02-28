@@ -5,9 +5,8 @@ use crate::{
 };
 
 use actix_web::{
-  get, post,
+  HttpResponse, get, post,
   web::{Data, Json, Query},
-  HttpResponse,
 };
 
 #[get("/article")]

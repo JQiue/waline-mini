@@ -1,8 +1,7 @@
 use actix_web::{
-  get,
+  HttpResponse, get,
   http::{self, header::ContentType},
   web::{Data, Query},
-  HttpResponse,
 };
 use helpers::jwt;
 

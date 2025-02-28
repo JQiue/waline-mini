@@ -9,7 +9,7 @@ pub struct CounterRepository<'a> {
   pub db: &'a DatabaseConnection,
 }
 
-impl<'a> CounterRepository<'a> {
+impl CounterRepository<'_> {
   pub async fn get_counter(&self, url: &str) -> Result<Option<wl_counter::Model>, DbErr> {
     wl_counter::Entity::find()
       .filter(wl_counter::Column::Url.eq(url))

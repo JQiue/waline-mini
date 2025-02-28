@@ -1,4 +1,4 @@
-use actix_web::{http::header::HeaderValue, HttpRequest};
+use actix_web::{HttpRequest, http::header::HeaderValue};
 
 use crate::error::AppError;
 

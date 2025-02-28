@@ -1,7 +1,7 @@
 use actix_web::web::ServiceConfig;
 use shuttle_actix_web::ShuttleActixWeb;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{filter, fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, filter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod app;
 mod components;

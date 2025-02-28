@@ -8,7 +8,7 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::model::{CounterData, UserData};
 

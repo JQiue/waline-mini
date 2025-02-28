@@ -1,7 +1,6 @@
 use actix_web::{
-  delete, get, post, put,
+  HttpResponse, delete, get, post, put,
   web::{Data, Json, Query},
-  HttpResponse,
 };
 use serde_json::json;
 

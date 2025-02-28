@@ -82,12 +82,11 @@ pub fn build_data_entry(
   let addr = if disable_region {
     Some("".to_string())
   } else if let Some(ip) = comment.ip {
-    let ip = if let Some(ip2region) = ip2region {
+    if let Some(ip2region) = ip2region {
       ip2region.search(&ip)
     } else {
       None
-    };
-    ip
+    }
   } else {
     None
   };

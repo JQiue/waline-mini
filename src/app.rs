@@ -21,9 +21,8 @@ use crate::{
 
 use actix_cors::Cors;
 use actix_web::{
-  middleware,
+  App, HttpResponse, HttpServer, middleware,
   web::{self, ServiceConfig},
-  HttpResponse,
 };
 use sea_orm::Database;
 use serde_json::Value;
