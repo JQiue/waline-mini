@@ -71,3 +71,9 @@ pub async fn ui_page() -> HttpResponse {
     .content_type(ContentType::html())
     .body(service::admin_page().await)
 }
+
+pub async fn index_page() -> HttpResponse {
+  HttpResponse::Ok()
+    .content_type(ContentType::html())
+    .body(service::index_page().await)
+}

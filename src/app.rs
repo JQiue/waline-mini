@@ -10,7 +10,10 @@ use crate::{
     article,
     comment::{self},
     migration,
-    ui::{self, handler::ui_page},
+    ui::{
+      self,
+      handler::{index_page, ui_page},
+    },
     user,
   },
   config::EnvConfig,
@@ -113,6 +116,7 @@ async fn health_check() -> HttpResponse {
 }
 
 pub fn config_app(cfg: &mut ServiceConfig) {
+  cfg.route("/", web::get().to(index_page));
   cfg.service(
     web::scope("/api")
       .configure(article::config)

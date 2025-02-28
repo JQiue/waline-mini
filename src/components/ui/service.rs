@@ -31,3 +31,37 @@ pub async fn admin_page() -> String {
        </html>"#
   )
 }
+
+pub async fn index_page() -> String {
+  let server_url = env::var("SERVER_URL")
+    .ok()
+    .unwrap_or("https://waline-mini-hydv.shuttle.app".to_string());
+  format!(
+    r#"<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>waline-mini by shuttle deploy</title>
+  <link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css" />
+</head>
+
+<body>
+  <div id="article-info" style="text-align: center;">
+    浏览量: <span class="waline-pageview-count" data-path="/" />
+  </div>
+  <div id="waline"></div>
+  <script type="module">
+    import {{ init }} from 'https://unpkg.com/@waline/client@v3/dist/waline.js';
+    init({{
+      el: '#waline',
+      serverURL: '{server_url}',
+      reaction: true,
+      pageview: true,
+  }});
+
+  </script>
+</body>"#
+  )
+}
