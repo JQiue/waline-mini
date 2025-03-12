@@ -127,7 +127,7 @@ git clone -b shuttle https://github.com/JQiue/waline-mini.git
 | DISABLE_AUTHORE_NOTIFY | 是否禁止新评论通知                                                                                                          |          | `false`        |
 | DISABLE_REGION         | 是否隐藏评论者的归属地                                                                                                      |          | `false`        |
 | DISABLE_USERAGENT      | 是否隐藏评论者的 UA                                                                                                         |          | `false`        |
-| IP2REGION_DB           | 自定义 IP 查询库路径，waline-mini waline-mini 并不包含 xdb 文件，需要手动提供                                               |          |                |
+| IP2REGION_DB           | 自定义 IP 查询库路径，waline-mini 并不包含 xdb 文件，需要手动提供                                                           |          |                |
 
 ## 常见问题
 

@@ -16,6 +16,7 @@ use crate::{
   config::EnvConfig,
   error::AppError,
   helpers::ip::Ip2Region,
+  migration::migrate,
   repository::RepositoryManager,
 };
 
@@ -24,7 +25,6 @@ use actix_web::{
   App, HttpResponse, HttpServer, middleware,
   web::{self, ServiceConfig},
 };
-use sea_orm::Database;
 use serde_json::Value;
 use tracing::info;
 
@@ -145,7 +145,7 @@ pub async fn start() -> Result<(), AppError> {
     ip2region_db,
     ..
   } = EnvConfig::load_env()?;
-  let conn = Database::connect(database_url).await?;
+  let conn = migrate(&database_url).await?;
   conn.ping().await?;
   let comment_cache = CommentCache::new();
   let mut ip2region = None;
