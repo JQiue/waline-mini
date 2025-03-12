@@ -1,18 +1,15 @@
 use actix_web::{
-  delete, get,
+  HttpRequest, HttpResponse, delete, get,
   http::{self, header::AUTHORIZATION},
   post, put,
   web::{Data, Json, Path, Query},
-  HttpRequest, HttpResponse,
 };
-use serde_json::json;
 
 use crate::{
   app::AppState,
   components::user::{model::*, service},
-  helpers::header::{extract_token, extract_token_from_header},
-  prelude::Code,
-  response::Response,
+  helpers::header::{extract_origin, extract_token, extract_token_from_header},
+  prelude::{AppError, Response},
 };
 
 #[post("/user")]
@@ -46,7 +43,7 @@ pub async fn user_register(
   )
   .await
   {
-    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), Some(&lang))),
+    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
     Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
   }
 }
@@ -59,26 +56,26 @@ pub async fn user_login(state: Data<AppState>, body: Json<UserLoginBody>) -> Htt
     password,
   }) = body;
   match service::user_login(&state, code, email, password).await {
-    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), None)),
+    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
     Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
   }
 }
 
 #[delete("/token")]
 pub async fn user_logout() -> HttpResponse {
-  HttpResponse::Ok().json(Response::<()>::success(None, None))
+  HttpResponse::Ok().json(Response::<()>::success(None))
 }
 
 #[get("/token")]
 async fn get_login_user_info(req: HttpRequest, state: Data<AppState>) -> HttpResponse {
-  if let Some(token) = extract_token_from_header(&req.headers().get(AUTHORIZATION)) {
+  match extract_token_from_header(&req.headers().get(AUTHORIZATION)) { Some(token) => {
     match service::get_login_user_info(&state, token).await {
-      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), None)),
+      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
       Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
     }
-  } else {
-    HttpResponse::Ok().json(Response::<()>::error(crate::response::Code::Error, None))
-  }
+  } _ => {
+    HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None))
+  }}
 }
 
 #[put("/user")]
@@ -93,17 +90,27 @@ pub async fn set_user_profile(
     url,
     password,
     avatar,
+    two_factor_auth,
   }) = body;
   match extract_token(&req) {
     Ok(token) => {
-      match service::set_user_profile(&state, token, display_name, label, url, password, avatar)
-        .await
+      match service::set_user_profile(
+        &state,
+        token,
+        display_name,
+        label,
+        url,
+        password,
+        avatar,
+        two_factor_auth,
+      )
+      .await
       {
-        Ok(_) => HttpResponse::Ok().json(Response::<()>::success(None, None)),
+        Ok(_) => HttpResponse::Ok().json(Response::<()>::success(None)),
         Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
       }
     }
-    Err(err) => HttpResponse::Ok().json(Response::<()>::error(err.into(), None)),
+    Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
   }
 }
 
@@ -119,25 +126,25 @@ pub async fn set_user_type(
   let Json(SetUserTypeBody { r#type }) = body;
   match extract_token(&req) {
     Ok(token) => match service::set_user_type(&state, token, user_id, r#type).await {
-      Ok(_) => HttpResponse::Ok().json(Response::<()>::success(None, None)),
+      Ok(_) => HttpResponse::Ok().json(Response::<()>::success(None)),
       Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
     },
-    Err(_) => HttpResponse::Ok().json(Response::<()>::error(Code::Unauthorized, None)),
+    Err(_) => HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None)),
   }
 }
 
 #[get("/user")]
 pub async fn get_user_info(state: Data<AppState>, query: Query<GetUserQuery>) -> HttpResponse {
   let Query(GetUserQuery { email, lang, page }) = query;
-  if page.is_some() {
-    match service::get_user_info_list(&state, page.unwrap()).await {
-      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), Some(&lang))),
+  if let Some(page) = page {
+    match service::get_user_info_list(&state, page).await {
+      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
       Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
     }
   } else {
     match service::get_user_info(&state, email).await {
-      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), Some(&lang))),
-      Err(_) => HttpResponse::Ok().json(Response::<()>::success(None, Some(&lang))),
+      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
+      Err(_) => HttpResponse::Ok().json(Response::<()>::success(None)),
     }
   }
 }
@@ -153,30 +160,48 @@ pub async fn verification(state: Data<AppState>, query: Query<VerificationQuery>
   }
 }
 
-/// TODO set 2fa
 #[post("/token/2fa")]
-pub async fn set_2fa(state: Data<AppState>, body: Json<Set2faBody>) -> HttpResponse {
+pub async fn set_2fa(
+  req: HttpRequest,
+  state: Data<AppState>,
+  body: Json<Set2faBody>,
+) -> HttpResponse {
   let Json(Set2faBody { code, secret }) = body;
-  match service::set_2fa(&state, code, secret).await {
-    Ok(_) => HttpResponse::Ok().json(json!({
-      "errno": 1000,
-      "errmsg": "二步验证失败"
-    })),
-    Err(_) => HttpResponse::Ok().json(json!({
-      "errno": 1000,
-      "errmsg": "二步验证失败"
-    })),
+  match extract_token(&req) {
+    Ok(token) => match service::set_2fa(&state, token, code, secret).await {
+      Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
+      Err(_) => HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None)),
+    },
+    Err(_) => HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None)),
   }
 }
 
 #[get("/token/2fa")]
-pub async fn get_2fa(state: Data<AppState>, query: Query<Get2faQuery>) -> HttpResponse {
+pub async fn get_2fa(
+  req: HttpRequest,
+  state: Data<AppState>,
+  query: Query<Get2faQuery>,
+) -> HttpResponse {
   let Query(Get2faQuery { lang, email }) = query;
-  match service::get_2fa(&state, email).await {
-    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data), Some(&lang))),
-    Err(_) => HttpResponse::Ok().json(json!({
-      "errno": 1000,
-      "errmsg": "二步验证失败"
-    })),
+  let token = extract_token(&req).map_or(None, Some);
+  match service::get_2fa(&state, token, email).await {
+    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
+    Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
+  }
+}
+
+#[put("/user/password")]
+pub async fn modify_password(
+  req: HttpRequest,
+  state: Data<AppState>,
+  query: Query<UserPasswordQuery>,
+  body: Json<UserPasswordBody>,
+) -> HttpResponse {
+  let Query(UserPasswordQuery { lang }) = query;
+  let Json(UserPasswordBody { email }) = body;
+  let origin = extract_origin(&req);
+  match service::modify_password(&state, email, &origin, &lang).await {
+    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
+    Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
   }
 }

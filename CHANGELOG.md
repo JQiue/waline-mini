@@ -2,11 +2,70 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.9.2](https://github.com/JQiue/waline-rs/compare/v0.9.1..0.9.2) - 2025-01-16
+## [0.11.0](https://github.com/JQiue/waline-rs/compare/v0.10.0..0.11.0) - 2025-02-26
+
+### 🚀 Features
+
+- Add disable_useragent configuration and handling - ([30b520b](https://github.com/JQiue/waline-rs/commit/30b520bc577f59c8165a645c64af89e75564d764))
+- Add disable_region configuration and update handling - ([beb2afd](https://github.com/JQiue/waline-rs/commit/beb2afde112c3db9c94a3f81cf9fc16926bcd113))
+- Integrate ip2region for IP location lookup - ([d04a177](https://github.com/JQiue/waline-rs/commit/d04a17770eebe78c6c6204928a8320750a76bd8f))
+- Add password modification functionality and email notifications - ([85747f1](https://github.com/JQiue/waline-rs/commit/85747f1d7120b43761fa92c6dec6d9cec6cc9345))
+
+### 🐛 Bug Fixes
+
+- Improve user login and 2FA verification - ([cf0fff6](https://github.com/JQiue/waline-rs/commit/cf0fff60d43024479cfa494c9ce95dcf13c57a80))
+
+### 🚜 Refactor
+
+- Simplify response handling and clean up code - ([e34f833](https://github.com/JQiue/waline-rs/commit/e34f833cb299a1980945557c97eb71110c8f796b))
+- Migrate to 2024 edition - ([e1309b1](https://github.com/JQiue/waline-rs/commit/e1309b1ea35739f1f6eac713ffe588850d41f897))
+
+### ⚡ Performance
+
+- Implement comment caching mechanism in AppState - ([aa709a1](https://github.com/JQiue/waline-rs/commit/aa709a1651e490124f0bf3a11ac98c33e4207225))
+
+### ⚙️ Miscellaneous Tasks
+
+- Update README - ([f4bf562](https://github.com/JQiue/waline-rs/commit/f4bf5629231c4a0ec83e27005899dd9f06e1cb71))
+- Update release workflow to simplify target labels - ([85b9e31](https://github.com/JQiue/waline-rs/commit/85b9e317b9f4b66fb4d3f6d379717f0c24d3ad60))
+
+## [0.10.0](https://github.com/JQiue/waline-rs/compare/v0.9.2..v0.10.0) - 2025-02-21
+
+### 🚀 Features
+
+- Add new fields and administrator rights handling in the comment data structure - ([a2b18f1](https://github.com/JQiue/waline-rs/commit/a2b18f15865083dcffadf2a61e36901acc5a85f5))
+- Add sticky field to comment update functionality - ([ca43b19](https://github.com/JQiue/waline-rs/commit/ca43b19c9601f81fe1e7ee720e993ac30bfa888f))
+- Impl feat/disallow_ip_list - ([173afba](https://github.com/JQiue/waline-rs/commit/173afba3e566a6f0b1a24d21a2a785d148e260bb))
+- Add configuration option to disable author notifications - ([5428238](https://github.com/JQiue/waline-rs/commit/5428238e0769d7b354ee4cf1f482b325f90a7f9a))
+- Add forbidden words handling in comments - ([73fa180](https://github.com/JQiue/waline-rs/commit/73fa180b678a4ee49bcc5fbbeca3e088427e246a))
+- Implement repository pattern for comments and users - ([fe99aa8](https://github.com/JQiue/waline-rs/commit/fe99aa8009ea666b0eb4604572269e1b4cf803f9))
+- Add two-factor authentication support and dependencies - ([1e4b621](https://github.com/JQiue/waline-rs/commit/1e4b62143103a888e1cab4ee38f88044be2e0aef))
+
+### 🚜 Refactor
+
+- Optimize type handling and improve code clarity - ([14f4ba9](https://github.com/JQiue/waline-rs/commit/14f4ba9225ecf1755200e4cf94dbd4029cacf889))
+
+### 📚 Documentation
+
+- Update README - ([25ef7c1](https://github.com/JQiue/waline-rs/commit/25ef7c18a4dc408c7fdf6a0314b01f55f1fda264))
+
+### ⚙️ Miscellaneous Tasks
+
+- Update helpers version to 0.5.3 and refactor token handling - ([8bbd3f2](https://github.com/JQiue/waline-rs/commit/8bbd3f27c8b9d40fa4ad75532b41d23713ca00c8))
+- Update README - ([25ce7bb](https://github.com/JQiue/waline-rs/commit/25ce7bbe71115630d931a3738a75007410be939c))
+- Update README - ([cd3c471](https://github.com/JQiue/waline-rs/commit/cd3c471e9e570e4a2fe5b5f00db5f81ec11ca2c0))
+- Update README - ([1659235](https://github.com/JQiue/waline-rs/commit/1659235cd97d6e2eec729ee121ab34f7db6857ad))
+- Release waline-mini version 0.10.0 - ([948bc2e](https://github.com/JQiue/waline-rs/commit/948bc2ea3a00e03082add2bd69c121ce1bde4105))
+
+## [0.9.2](https://github.com/JQiue/waline-rs/compare/v0.9.1..v0.9.2) - 2025-01-16
 
 ### 🐛 Bug Fixes
 
 - Disable reqwest's default features to compile through - ([aedfb85](https://github.com/JQiue/waline-rs/commit/aedfb850d0be642cc6eb7ed67cbb391a8925079a))
+
+### ⚙️ Miscellaneous Tasks
+
+- Release waline-mini version 0.9.2 - ([742a8c6](https://github.com/JQiue/waline-rs/commit/742a8c676365c2cfde21cbff3d433acee2d06920))
 
 ## [0.9.1](https://github.com/JQiue/waline-rs/compare/v0.9.0..v0.9.1) - 2025-01-16
 
@@ -75,9 +134,6 @@ All notable changes to this project will be documented in this file.
 - Update leancloud.sh to copy waline-mini from new path - ([3cb32d9](https://github.com/JQiue/waline-rs/commit/3cb32d9106de94d8f4524652fa5a9d7cb6955df6))
 - Release waline-mini version 0.8.0 - ([41765fc](https://github.com/JQiue/waline-rs/commit/41765fc36ef0609aee4f47396bdce9eb9cfd42ac))
 
-## ❤️ New Contributors
-
-* @JQiue made their first contribution
 ## [0.7.1](https://github.com/JQiue/waline-rs/compare/v0.7.0..v0.7.1) - 2025-01-04
 
 ### 🐛 Bug Fixes

@@ -1,8 +1,7 @@
 use actix_web::{
-  get,
+  HttpResponse, get,
   http::{self, header::ContentType},
   web::{Data, Query},
-  HttpResponse,
 };
 use helpers::jwt;
 
@@ -55,6 +54,13 @@ pub async fn ui_migration_page() -> HttpResponse {
 
 #[get("/user")]
 pub async fn ui_user_page() -> HttpResponse {
+  HttpResponse::Ok()
+    .content_type(ContentType::html())
+    .body(service::admin_page().await)
+}
+
+#[get("/forgot")]
+pub async fn ui_forgot_page() -> HttpResponse {
   HttpResponse::Ok()
     .content_type(ContentType::html())
     .body(service::admin_page().await)

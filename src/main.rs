@@ -1,5 +1,5 @@
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{filter, fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, filter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod app;
 mod components;
@@ -8,6 +8,7 @@ mod entities;
 mod error;
 mod helpers;
 mod locales;
+mod migration;
 mod prelude;
 mod repository;
 mod response;
@@ -17,7 +18,8 @@ mod traits;
 async fn main() -> Result<(), error::AppError> {
   let target_filter = filter::Targets::new()
     .with_default(LevelFilter::TRACE)
-    .with_target("sqlx::query", LevelFilter::DEBUG)
+    .with_target("sqlx::query", LevelFilter::OFF)
+    .with_target("html5ever", LevelFilter::OFF)
     .with_target("rustls", LevelFilter::OFF);
   let env_filter = EnvFilter::try_from_default_env()
     .or_else(|_| EnvFilter::try_new("info"))
