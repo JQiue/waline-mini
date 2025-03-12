@@ -31,80 +31,76 @@ pub async fn user_register(
   host_header: String,
   lang: &str,
 ) -> Result<Value, AppError> {
+  let EnvConfig { site_name, .. } = EnvConfig::load_env()?;
   let mut data = json!({
     "verify": true
   });
   let hashed = hash::bcrypt_custom(&password, 8, helpers::hash::Version::TwoA)?;
-  let EnvConfig { site_name, .. } = EnvConfig::load_env()?;
 
-  match state.repo.user().get_user_by_email(&email).await? {
-    Some(user) => {
-      if user.user_type != "administrator" || user.user_type != "guest" {
-        let mut active_user = user.into_active_model();
-        active_user.display_name = Set(display_name);
-        active_user.url = Set(Some(url));
-        active_user.password = Set(hashed);
-        let token = uuid::uuid(&Alphabet::NUMBERS, 4);
-        active_user.user_type = Set(format!(
-          "verify:{}:{}",
-          token,
-          utc_now().timestamp_millis() + 60 * 60 * 1000
-        ));
-        let url = format!(
-          "http://{}/api/verification?token={}&email={}",
-          host_header, token, email
-        );
-        send_email_notification(Notification {
-          sender_name: site_name,
-          sender_email: email,
-          comment_id: 0,
-          comment: "".to_string(),
-          url,
-          notify_type: NotifyType::RegisterUser,
-          lang: Some(lang),
-        });
-        state.repo.user().update_user(active_user).await?;
-        return Ok(data);
-      }
-
-      Err(AppError::UserRegistered)
+  if let Some(user) = state.repo.user().get_user_by_email(&email).await? {
+    if user.user_type == "administrator" || user.user_type == "guest" {
+      return Err(AppError::UserRegistered);
     }
-    _ => {
-      let mut active_user: wl_users::ActiveModel = wl_users::ActiveModel {
-        display_name: Set(display_name),
-        email: Set(email.clone()),
-        url: Set(Some(url)),
-        password: Set(hashed),
-        ..Default::default()
-      };
+    let mut active_user = user.into_active_model();
+    active_user.display_name = Set(display_name);
+    active_user.url = Set(Some(url));
+    active_user.password = Set(hashed);
+    let token = uuid::uuid(&Alphabet::NUMBERS, 4);
+    active_user.user_type = Set(format!(
+      "verify:{}:{}",
+      token,
+      utc_now().timestamp_millis() + 60 * 60 * 1000
+    ));
+    let url = format!(
+      "http://{}/api/verification?token={}&email={}",
+      host_header, token, email
+    );
+    send_email_notification(Notification {
+      sender_name: site_name,
+      sender_email: email,
+      comment_id: 0,
+      comment: "".to_string(),
+      url,
+      notify_type: NotifyType::RegisterUser,
+      lang: Some(lang),
+    });
+    state.repo.user().update_user(active_user).await?;
+    return Ok(data);
+  } else {
+    let mut active_user: wl_users::ActiveModel = wl_users::ActiveModel {
+      display_name: Set(display_name),
+      email: Set(email.clone()),
+      url: Set(Some(url)),
+      password: Set(hashed),
+      ..Default::default()
+    };
 
-      if state.repo.user().is_first_user().await? {
-        active_user.user_type = Set("administrator".to_string());
-        data = json!({});
-      } else {
-        let token = uuid::uuid(&Alphabet::NUMBERS, 4);
-        active_user.user_type = Set(format!(
-          "verify:{}:{}",
-          token,
-          utc_now().timestamp_millis() + 60 * 60 * 1000
-        ));
-        let url = format!(
-          "http://{}/api/verification?token={}&email={}",
-          host_header, token, email
-        );
-        send_email_notification(Notification {
-          sender_name: site_name,
-          sender_email: email,
-          comment_id: 0,
-          comment: "".to_string(),
-          url,
-          notify_type: NotifyType::RegisterUser,
-          lang: Some(lang),
-        });
-      }
-      state.repo.user().create_user(active_user).await?;
-      Ok(data)
+    if state.repo.user().is_first_user().await? {
+      active_user.user_type = Set("administrator".to_string());
+      data = json!({});
+    } else {
+      let token = uuid::uuid(&Alphabet::NUMBERS, 4);
+      active_user.user_type = Set(format!(
+        "verify:{}:{}",
+        token,
+        utc_now().timestamp_millis() + 60 * 60 * 1000
+      ));
+      let url = format!(
+        "http://{}/api/verification?token={}&email={}",
+        host_header, token, email
+      );
+      send_email_notification(Notification {
+        sender_name: site_name,
+        sender_email: email,
+        comment_id: 0,
+        comment: "".to_string(),
+        url,
+        notify_type: NotifyType::RegisterUser,
+        lang: Some(lang),
+      });
     }
+    state.repo.user().create_user(active_user).await?;
+    Ok(data)
   }
 }
 
