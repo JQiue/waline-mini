@@ -65,7 +65,7 @@ pub async fn user_register(
       lang: Some(lang),
     });
     state.repo.user().update_user(active_user).await?;
-    return Ok(data);
+    Ok(data)
   } else {
     let mut active_user: wl_users::ActiveModel = wl_users::ActiveModel {
       display_name: Set(display_name),

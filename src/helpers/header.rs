@@ -1,17 +1,6 @@
-use actix_web::{HttpRequest, http::header::HeaderValue};
+use actix_web::HttpRequest;
 
 use crate::error::AppError;
-
-pub fn extract_token_from_header(header_value: &Option<&HeaderValue>) -> Option<String> {
-  header_value.and_then(|value| {
-    let value = value.to_str().ok()?;
-    if value.starts_with("Bearer ") {
-      Some(value.split(' ').nth(1)?.to_string())
-    } else {
-      None
-    }
-  })
-}
 
 pub fn extract_token(req: &HttpRequest) -> Result<String, AppError> {
   let auth_header = req
@@ -40,22 +29,12 @@ pub fn extract_ip(req: &HttpRequest) -> String {
   }
 }
 
-pub fn extract_host(req: &HttpRequest) -> String {
-  req
-    .headers()
-    .get("Host")
-    .and_then(|h| h.to_str().ok())
-    .unwrap_or_default()
-    .to_string()
-}
-
-pub fn extract_referer(req: &HttpRequest) -> String {
+pub fn extract_referer(req: &HttpRequest) -> Option<String> {
   req
     .headers()
     .get("Referer")
     .and_then(|h| h.to_str().ok())
-    .unwrap_or_default()
-    .to_string()
+    .map(|s| s.to_string())
 }
 
 pub fn extract_origin(req: &HttpRequest) -> String {
