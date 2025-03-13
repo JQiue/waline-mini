@@ -8,6 +8,7 @@ mod entities;
 mod error;
 mod helpers;
 mod locales;
+mod middlewares;
 mod migration;
 mod prelude;
 mod repository;

@@ -44,6 +44,7 @@ reqwest = { version = "0.12.12", default-features = false, features = [
 totp-rs = { version = "5.6.0", features = ["otpauth", "gen_secret"] }
 ip2region = "0.1.0"
 migration = { path = "migration" }
+futures-util = "0.3.31"
 
 [features]
 default = []

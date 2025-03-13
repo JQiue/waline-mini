@@ -16,6 +16,7 @@ use crate::{
   config::EnvConfig,
   error::AppError,
   helpers::ip::Ip2Region,
+  middlewares::SecureDomians,
   migration::migrate,
   repository::RepositoryManager,
 };
@@ -143,6 +144,7 @@ pub async fn start() -> Result<(), AppError> {
     disable_useragent,
     disable_region,
     ip2region_db,
+    secure_domians,
     ..
   } = EnvConfig::load_env()?;
   let conn = migrate(&database_url).await?;
@@ -175,6 +177,7 @@ pub async fn start() -> Result<(), AppError> {
   Ok(
     HttpServer::new(move || {
       App::new()
+        .wrap(SecureDomians::new(secure_domians.clone()))
         .wrap(middleware::Logger::default())
         .wrap(Cors::permissive())
         .app_data(web::Data::new(state.clone()))
