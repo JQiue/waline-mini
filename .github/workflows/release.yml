@@ -44,3 +44,17 @@ jobs:
           include: README.md
           archive: $bin-$tag-${{ matrix.target }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload leancloud branch
+        if: ${{matrix.target == 'x86_64-unknown-linux-musl'}}
+        run: |
+          mkdir ./target/leancloud
+          cp ./assets/leanengine.yaml ./target/leancloud
+          cp ./target/x86_64-unknown-linux-musl/release/waline-mini ./target/leancloud
+          cd ./target/leancloud
+          git init
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "leancloud"
+          git branch -M leancloud
+          git push https://${{secrets.PUSH_SECRET}}@github.com/${{github.repository}}.git leancloud:leancloud --force
