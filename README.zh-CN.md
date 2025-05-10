@@ -40,7 +40,7 @@ Waline-mini 是原 Waline 评论系统的轻量级 Rust 实现，使用的内存
 | 安全性：评论审核         | 完全可用 | 稳定   |
 | 安全性：反垃圾评论       | 完全可用 | 稳定   |
 | 安全性：违禁词           | 完全可用 | 稳定   |
-| 安全性：安全域名         | 不可用   | 进行中 |
+| 安全性：安全域名         | 完全可用 | 稳定   |
 | 安全性：不允许的 IP 列表 | 完全可用 | 稳定   |
 | OAuth                    | 不可用   | 进行中 |
 | 数据迁移                 | 完全可用 | 稳定   |
@@ -50,11 +50,11 @@ Waline-mini 是原 Waline 评论系统的轻量级 Rust 实现，使用的内存
 
 ### 从可执行文件中运行
 
-从 [GitHub Releases](https://github.com/JQiue/waline-mini/releases) 下载对应平台的可执行文件，以 Linux + SQLite 使用示例，你首先需要从`asset`获取准备好的`waline.sqlite`文件：
+从 [GitHub Releases](https://github.com/JQiue/waline-mini/releases) 下载对应平台的可执行文件，以 Linux + SQLite 使用示例：
 
 ```bash
 # 设置必要的环境变量
-export DATABASE_URL=sqlite:///path/to/waline.sqlite
+export DATABASE_URL=sqlite:///path/to/waline.sqlite?mode=rwc
 export JWT_TOKEN=your_secret_key
 export SITE_NAME=your_site_name
 export SITE_URL=your_site_url
@@ -109,7 +109,7 @@ git clone -b shuttle https://github.com/JQiue/waline-mini.git
 | SERVER_URL             | 自定义服务器地址                                                                                                            |          | auto           |
 | HOST                   | 监听地址                                                                                                                    |          | `127.0.0.1`    |
 | PORT                   | 监听端口                                                                                                                    |          | `8360`         |
-| WORKERS                | 工作线程数                                                                                                                  |          | 1              |
+| WORKERS                | 工作线程数                                                                                                                  |          | `1`            |
 | LEVELS                 | 根据评论的数量给每个用户一个评级标签                                                                                        |          | -              |
 | SMTP_SERVICE           | SMTP 邮件服务提供商：`QQ`，`GMail`，`126`，`163`                                                                            |          | -              |
 | SMTP_HOST              | SMTP 服务器地址                                                                                                             |          | -              |

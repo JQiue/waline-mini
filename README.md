@@ -40,7 +40,7 @@ In my Ubuntu server, the waline-mini requires only about `5612Kb=5.48MB` of memo
 | Security: Comment Review     | Fully        | Stable      |
 | Security: Anti-spam comments | Fully        | Stable      |
 | Security: Forbidden words    | Fully        | Stable      |
-| Security: Secure domians     | Not          | In Progress |
+| Security: Secure domians     | Fully        | Stable      |
 | Security: Disallow IP List   | Fully        | Stable      |
 | OAuth                        | Not          | In Progress |
 | Data migration               | Fully        | Stable      |
@@ -50,11 +50,11 @@ In my Ubuntu server, the waline-mini requires only about `5612Kb=5.48MB` of memo
 
 ### Run from an executable file
 
-From [GitHub Releases](https://github.com/JQiue/waline-mini/releases) to download the binary file is appropriate for your platform. Examples of Linux use. You first need to get the `waline.sqlite` file prepared from the `assets`:
+From [GitHub Releases](https://github.com/JQiue/waline-mini/releases) to download the binary file is appropriate for your platform. Examples of Linux use:
 
 ```bash
 # Setting environment variables
-export DATABASE_URL=sqlite:///path/to/waline.sqlite
+export DATABASE_URL=sqlite:///path/to/waline.sqlite?mode=rwc
 export JWT_TOKEN=your_secret_key
 export SITE_NAME=your_site_name
 export SITE_URL=your_site_url
@@ -107,7 +107,7 @@ Configure waline-mini with environment variables:
 | SERVER_URL             | Custom Waline server address                                                                                                                                                                |         | auto           |
 | HOST                   | listening host                                                                                                                                                                              |         | `127.0.0.1`    |
 | PORT                   | listening port                                                                                                                                                                              |         | `8360`         |
-| WORKERS                | Worker thread count                                                                                                                                                                         |         | 1              |
+| WORKERS                | Worker thread                                                                                                                                                                               |         | `1`            |
 | LEVELS                 | Give each user a rating label based on the number of comments                                                                                                                               |         | -              |
 | SMTP_SERVICE           | SMTP mail service provider: `QQ`，`GMail`，`126`，`163`                                                                                                                                     |         | -              |
 | SMTP_HOST              | SMTP server address                                                                                                                                                                         |         | -              |
@@ -125,7 +125,7 @@ Configure waline-mini with environment variables:
 | DISABLE_AUTHORE_NOTIFY | wether disable author notification                                                                                                                                                          |         | `false`        |
 | DISABLE_REGION         | wether hide commenter's region. Default value is false                                                                                                                                      |         | `false`        |
 | DISABLE_USERAGENT      | wether hide the user agent of commenter. Default value is false                                                                                                                             |         | `false`        |
-| IP2REGION_DB           | customized IP query library path. The waline-mini does not contain xdb files and needs to be provided manually                                                                              |         |
+| IP2REGION_DB           | customized IP query library path. The waline-mini does not contain xdb files and needs to be provided manually                                                                              |         |                |
 
 ## FAQ
 
