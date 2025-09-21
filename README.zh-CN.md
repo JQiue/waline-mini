@@ -13,7 +13,7 @@
 
 ## 介绍
 
-Waline-mini 是原 Waline 评论系统的轻量级 Rust 实现，使用的内存比 Node.js 少 95%，是资源受限服务器的替代方案
+Waline-mini 是原 Waline 评论系统的 Rust 实现，使用的内存比 Node.js 少 95%，是资源受限服务器的替代方案
 
 在我的 Ubuntu 服务器上，waline-mini 仅需要 `5612kb=5.48mb`的内存占用
 
@@ -67,6 +67,7 @@ export SITE_URL=your_site_url
 
 ```sh
 docker run -d \
+  --name waline-mini \
   -e JWT_TOKEN=your_secret_key \
   -e SITE_NAME=your_site_name \
   -e SITE_URL=your_site_url \
@@ -94,7 +95,7 @@ git clone -b shuttle https://github.com/JQiue/waline-mini.git
 
 使用 LeanCloud 直接拉取仓库进行部署，分支需要填写`leancloud`
 
-如果使用 SQLite 作为数据存储，则环境变量`DATABASE_URL`应该填入`sqlite://./waline.sqlite?mode=rwc`。使用 LeanCloud 部署时，每次都会包含一个全新的 SQLite 文件，所以在重新部署前导出数据，重新部署后在导入数据，当升级 waline-mini 重新进行部署时这个步骤非常重要
+使用 SQLite 作为数据存储，则环境变量`DATABASE_URL`应配置为`sqlite://./waline.sqlite?mode=rwc`。在 LeanCloud 部署时，每次部署都会得到一个全新的 SQLite 文件，因此，在重新部署前务必导出数据，并在重新部署后将数据导入，升级 waline-mini 需要重新进行部署时，此步骤非常重要
 
 ## 配置
 

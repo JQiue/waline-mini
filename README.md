@@ -13,7 +13,7 @@ English | [简体中文](./README.zh-CN.md)
 
 ## Introduction
 
-Waline-mini is a lightweight Rust implementation of the Waline comment system, using 95% less memory than its Node.js counterpart and serving as an efficient alternative for resource-constrained servers.
+Waline-mini is a high-performance Rust implementation of the Waline comment system, using 95% less memory than its Node.js counterpart and serving as an efficient alternative for resource-constrained servers.
 
 In my Ubuntu server, the waline-mini requires only about `5612Kb=5.48MB` of memory
 
@@ -67,6 +67,7 @@ export SITE_URL=your_site_url
 
 ```sh
 docker run -d \
+  --name waline-mini \
   -e JWT_TOKEN=your_secret_key \
   -e SITE_NAME=your_site_name \
   -e SITE_URL=your_site_url \
