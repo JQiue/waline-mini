@@ -10,6 +10,7 @@ use crate::{
   config::EnvConfig,
   helpers::header::{extract_ip, extract_token},
   prelude::{AppError, Response},
+  traits::IntoHttpResponse,
 };
 
 #[get("/comment")]
@@ -35,7 +36,7 @@ async fn get_comment_info(
       return Response::<()>::new_error(AppError::Error, Some(&lang));
     }
     let token = extract_token(&req);
-    match service::get_comment_info(
+    service::get_comment_info(
       &state,
       path,
       page,
@@ -44,10 +45,7 @@ async fn get_comment_info(
       token,
     )
     .await
-    {
-      Ok(data) => Response::new_success(Some(data)),
-      Err(err) => Response::<()>::new_error(err, Some(&lang)),
-    }
+    .into_http_response(Some(&lang))
   } else {
     let fields = query.validate_by_admin();
     if fields.is_err() {
@@ -62,7 +60,7 @@ async fn get_comment_info(
     if !is {
       return Response::<()>::new_error(AppError::Unauthorized, Some(&lang));
     }
-    match service::get_comment_info_by_admin(
+    service::get_comment_info_by_admin(
       &state,
       owner.unwrap(),
       email,
@@ -71,10 +69,7 @@ async fn get_comment_info(
       page,
     )
     .await
-    {
-      Ok(data) => Response::new_success(Some(data)),
-      Err(err) => Response::<()>::new_error(err, Some(&lang)),
-    }
+    .into_http_response(Some(&lang))
   }
 }
 
@@ -100,8 +95,8 @@ async fn create_comment(
   let mut user_type = UserType::Anonymous;
   let mut is_admin = false;
   let client_ip = extract_ip(&req);
-  let pass = match extract_token(&req) { Ok(token) => {
-    match jwt::verify::<String>(&token, &state.jwt_token) {
+  let pass = match extract_token(&req) {
+    Ok(token) => match jwt::verify::<String>(&token, &state.jwt_token) {
       Ok(verified_token) => {
         if state
           .repo
@@ -122,13 +117,14 @@ async fn create_comment(
         tracing::error!("{}", err);
         return HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang)));
       }
+    },
+    _ => {
+      if &state.login == "force" {
+        return HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang)));
+      }
+      state.rate_limiter.check_and_update(&client_ip, 1)
     }
-  } _ => {
-    if &state.login == "force" {
-      return HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang)));
-    }
-    state.rate_limiter.check_and_update(&client_ip, 1)
-  }};
+  };
   if !pass {
     return HttpResponse::Ok().json(Response::<()>::error(
       AppError::FrequencyLimited,
@@ -233,8 +229,8 @@ async fn update_comment(
       Err(err) => return HttpResponse::Ok().json(Response::<()>::error(err, None)),
     }
   }
-  match extract_token(&req) { Ok(token) => {
-    match jwt::verify::<String>(&token, &state.jwt_token) {
+  match extract_token(&req) {
+    Ok(token) => match jwt::verify::<String>(&token, &state.jwt_token) {
       Ok(data) => match service::update_comment(
         &state,
         data.claims.data,
@@ -255,8 +251,7 @@ async fn update_comment(
         Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
       },
       Err(_) => HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None)),
-    }
-  } _ => {
-    HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None))
-  }}
+    },
+    _ => HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None)),
+  }
 }

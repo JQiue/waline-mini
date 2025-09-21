@@ -16,14 +16,17 @@ use crate::{
   config::EnvConfig,
   error::AppError,
   helpers::ip::Ip2Region,
-  middlewares::SecureDomians,
+  middlewares::{SecureDomians, header_middleware},
   migration::migrate,
   repository::RepositoryManager,
 };
 
 use actix_cors::Cors;
 use actix_web::{
-  App, HttpResponse, HttpServer, middleware,
+  App, HttpMessage, HttpRequest, HttpResponse, HttpServer,
+  dev::Service,
+  http::header::{HOST, USER_AGENT},
+  middleware,
   web::{self, ServiceConfig},
 };
 use serde_json::Value;
@@ -76,8 +79,7 @@ impl CommentCache {
   }
 
   pub fn get(&self, path: String, page: i32) -> Option<Value> {
-    let cache = self.cache.lock().unwrap().get(&(path, page)).cloned();
-    cache
+    self.cache.lock().unwrap().get(&(path, page)).cloned()
   }
 
   pub fn insert(&mut self, path: String, page: i32, data: Value) {
@@ -109,8 +111,10 @@ pub struct AppState {
   pub ip2region: Option<Ip2Region>,
 }
 
-async fn health_check() -> HttpResponse {
-  HttpResponse::Ok().json(serde_json::json!({"status": "OK"}))
+async fn health_check(req: HttpRequest) -> HttpResponse {
+  let extensions = req.extensions();
+  let host = extensions.get::<String>();
+  HttpResponse::Ok().json(serde_json::json!({"status": "OK", "header": host}))
 }
 
 pub fn config_app(cfg: &mut ServiceConfig) {
@@ -177,6 +181,15 @@ pub async fn start() -> Result<(), AppError> {
   Ok(
     HttpServer::new(move || {
       App::new()
+        .wrap_fn(|req, srv| {
+          if let Some(host_header) = req.headers().get(USER_AGENT) {
+            if let Ok(host_value) = host_header.to_str() {
+              req.extensions_mut().insert(host_value.to_string());
+            }
+          }
+          let fut = srv.call(req);
+          async { fut.await }
+        })
         .wrap(SecureDomians::new(secure_domians.clone()))
         .wrap(middleware::Logger::default())
         .wrap(Cors::permissive())

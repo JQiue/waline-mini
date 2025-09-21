@@ -14,6 +14,7 @@ mod prelude;
 mod repository;
 mod response;
 mod traits;
+mod types;
 
 #[actix_web::main]
 async fn main() -> Result<(), error::AppError> {

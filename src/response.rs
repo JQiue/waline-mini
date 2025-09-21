@@ -5,36 +5,6 @@ use serde::Serialize;
 
 use crate::{error::AppError, locales::get_translation};
 
-/// Response code enumeration
-// #[derive(Debug, Clone, Copy, Serialize)]
-// pub enum Code {
-//   Success,
-//   Error,
-//   UserRegistered,
-//   DuplicateContent,
-//   Unauthorized,
-//   FrequencyLimited,
-//   TokenExpired,
-//   Forbidden,
-//   TwoFactorAuth,
-// }
-
-// impl Code {
-//   pub fn message(&self, lang: &str) -> String {
-//     match self {
-//       Code::Success => "".to_owned(),
-//       Code::UserRegistered => get_translation(lang, "USER_REGISTERED"),
-//       Code::Error => "".to_owned(),
-//       Code::DuplicateContent => get_translation(lang, "Duplicate Content"),
-//       Code::Unauthorized => get_translation(lang, "Unauthorized"),
-//       Code::FrequencyLimited => get_translation(lang, "Comment too fast"),
-//       Code::TokenExpired => get_translation(lang, "TOKEN_EXPIRED"),
-//       Code::Forbidden => get_translation(lang, "FORBIDDEN"),
-//       Code::TwoFactorAuth => get_translation(lang, "TWO_FACTOR_AUTH_ERROR_DETAIL"),
-//     }
-//   }
-// }
-
 #[derive(Debug, Serialize)]
 pub struct Response<T> {
   pub errno: i32,

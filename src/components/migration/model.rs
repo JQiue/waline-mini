@@ -26,7 +26,7 @@ mod datetime_utc_format {
   use chrono::{DateTime, Local, NaiveDateTime, Utc};
   use serde::{self, Deserialize, Deserializer};
 
-  use crate::prelude::LoggingResultErr;
+  use crate::traits::LoggingResultErr;
 
   pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
   where

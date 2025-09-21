@@ -16,11 +16,9 @@ pub fn extract_token(req: &HttpRequest) -> Result<String, AppError> {
 
 pub fn extract_ip(req: &HttpRequest) -> String {
   if let Some(h) = req.headers().get("X-Forwarded-For") {
-    let s = h.to_str().unwrap_or("0.0.0.0").to_string();
-    s
+    h.to_str().unwrap_or("0.0.0.0").to_string()
   } else if let Some(h) = req.headers().get("X-Real-IP") {
-    let s = h.to_str().ok().unwrap_or("0.0.0.0").to_string();
-    s
+    h.to_str().ok().unwrap_or("0.0.0.0").to_string()
   } else {
     req
       .peer_addr()
@@ -41,6 +39,15 @@ pub fn extract_origin(req: &HttpRequest) -> String {
   req
     .headers()
     .get("Origin")
+    .and_then(|h| h.to_str().ok())
+    .unwrap_or_default()
+    .to_string()
+}
+
+pub fn extract_host(req: &HttpRequest) -> String {
+  req
+    .headers()
+    .get("host")
     .and_then(|h| h.to_str().ok())
     .unwrap_or_default()
     .to_string()

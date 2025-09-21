@@ -14,7 +14,7 @@ pub struct UserRepository<'a> {
 }
 
 impl<'a> UserRepository<'a> {
-  pub async fn get_users(&self) -> Result<Vec<wl_users::Model>, DbErr> {
+  pub async fn _get_users(&self) -> Result<Vec<wl_users::Model>, DbErr> {
     wl_users::Entity::find().all(self.db).await
   }
 
@@ -58,7 +58,7 @@ impl<'a> UserRepository<'a> {
     user.update(self.db).await
   }
 
-  pub async fn has_user_by_id(&self, id: u32) -> Result<bool, DbErr> {
+  pub async fn _has_user_by_id(&self, id: u32) -> Result<bool, DbErr> {
     self.has_user(UserQueryBy::Id(id)).await
   }
 

@@ -13,6 +13,7 @@ use totp_rs::{Secret, TOTP};
 
 use crate::{
   app::AppState,
+  components::user::model::{SetUserProfileBody, UserLoginBody, UserRegisterBody},
   config::EnvConfig,
   entities::*,
   helpers::{
@@ -20,18 +21,22 @@ use crate::{
     email::{Notification, NotifyType, send_email_notification},
   },
   prelude::AppError,
+  types::ServiceResult,
 };
 
 pub async fn user_register(
   state: &AppState,
-  display_name: String,
-  email: String,
-  password: String,
-  url: String,
+  body: UserRegisterBody,
   host_header: String,
   lang: &str,
-) -> Result<Value, AppError> {
+) -> ServiceResult<Value> {
   let EnvConfig { site_name, .. } = EnvConfig::load_env()?;
+  let UserRegisterBody {
+    display_name,
+    email,
+    password,
+    url,
+  } = body;
   let mut data = json!({
     "verify": true
   });
@@ -51,10 +56,7 @@ pub async fn user_register(
       token,
       utc_now().timestamp_millis() + 60 * 60 * 1000
     ));
-    let url = format!(
-      "http://{}/api/verification?token={}&email={}",
-      host_header, token, email
-    );
+    let url = format!("http://{host_header}/api/verification?token={token}&email={email}",);
     send_email_notification(Notification {
       sender_name: site_name,
       sender_email: email,
@@ -85,10 +87,7 @@ pub async fn user_register(
         token,
         utc_now().timestamp_millis() + 60 * 60 * 1000
       ));
-      let url = format!(
-        "http://{}/api/verification?token={}&email={}",
-        host_header, token, email
-      );
+      let url = format!("http://{host_header}/api/verification?token={token}&email={email}",);
       send_email_notification(Notification {
         sender_name: site_name,
         sender_email: email,
@@ -104,12 +103,12 @@ pub async fn user_register(
   }
 }
 
-pub async fn user_login(
-  state: &AppState,
-  code: String,
-  email: String,
-  password: String,
-) -> Result<Value, AppError> {
+pub async fn user_login(state: &AppState, body: UserLoginBody) -> ServiceResult<Value> {
+  let UserLoginBody {
+    code,
+    email,
+    password,
+  } = body;
   let user = state
     .repo
     .user()
@@ -159,7 +158,11 @@ pub async fn user_login(
   Ok(data)
 }
 
-pub async fn get_login_user_info(state: &AppState, token: String) -> Result<Value, AppError> {
+pub async fn delete_token() -> ServiceResult<Value> {
+  Ok(json!({}))
+}
+
+pub async fn get_login_user_info(state: &AppState, token: String) -> ServiceResult<Value> {
   let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
   let user = state
     .repo
@@ -190,13 +193,16 @@ pub async fn get_login_user_info(state: &AppState, token: String) -> Result<Valu
 pub async fn set_user_profile(
   state: &AppState,
   token: String,
-  display_name: Option<String>,
-  label: Option<String>,
-  url: Option<String>,
-  password: Option<String>,
-  avatar: Option<String>,
-  two_factor_auth: Option<String>,
-) -> Result<Value, AppError> {
+  body: SetUserProfileBody,
+) -> ServiceResult<Value> {
+  let SetUserProfileBody {
+    display_name,
+    label,
+    url,
+    password,
+    avatar,
+    two_factor_auth,
+  } = body;
   let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
   let mut active_user = state
     .repo
@@ -233,7 +239,7 @@ pub async fn set_user_type(
   token: String,
   user_id: u32,
   r#type: String,
-) -> Result<Value, AppError> {
+) -> ServiceResult<Value> {
   let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
   if state.repo.user().is_admin_user(&email).await? {
     let mut active_user = state
@@ -254,7 +260,7 @@ pub async fn set_user_type(
   }
 }
 
-pub async fn get_user_info_list(state: &AppState, page: u32) -> Result<Value, AppError> {
+pub async fn get_user_info_list(state: &AppState, page: u32) -> ServiceResult<Value> {
   let page_size = 10;
   let paginator = wl_users::Entity::find()
     .select_only()
@@ -272,7 +278,7 @@ pub async fn get_user_info_list(state: &AppState, page: u32) -> Result<Value, Ap
   }))
 }
 
-pub async fn get_user_info(state: &AppState, email: Option<String>) -> Result<Value, AppError> {
+pub async fn get_user_info(state: &AppState, email: Option<String>) -> ServiceResult<Value> {
   match wl_users::Entity::find()
     .filter(wl_users::Column::Email.eq(email))
     .select_only()
@@ -287,11 +293,7 @@ pub async fn get_user_info(state: &AppState, email: Option<String>) -> Result<Va
   }
 }
 
-pub async fn verification(
-  state: &AppState,
-  email: String,
-  token: String,
-) -> Result<Value, AppError> {
+pub async fn verification(state: &AppState, email: String, token: String) -> ServiceResult<Value> {
   let user = state
     .repo
     .user()
@@ -319,7 +321,7 @@ pub async fn set_2fa(
   token: String,
   code: String,
   secret: String,
-) -> Result<Value, AppError> {
+) -> ServiceResult<Value> {
   let user_email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
   let mut user = state
     .repo
@@ -348,7 +350,7 @@ pub async fn get_2fa(
   state: &AppState,
   token: Option<String>,
   email: Option<String>,
-) -> Result<Value, AppError> {
+) -> ServiceResult<Value> {
   if token.is_none() && email.is_some() {
     let mut enabled = false;
     let user = wl_users::Entity::find()
@@ -403,7 +405,7 @@ pub async fn modify_password(
   email: String,
   origin: &str,
   lang: &str,
-) -> Result<Value, AppError> {
+) -> ServiceResult<Value> {
   let EnvConfig {
     smtp_service,
     smtp_host,
@@ -417,7 +419,7 @@ pub async fn modify_password(
   match state.repo.user().get_user_by_email(&email).await? {
     Some(user) => {
       let token = jwt::sign(user.email.clone(), &state.jwt_token, 300)?;
-      let url = format!("{}/ui/profile?token={}", origin, token);
+      let url = format!("{origin}/ui/profile?token={token}");
       send_email_notification(Notification {
         notify_type: NotifyType::ResetPassword,
         sender_name: "".to_owned(),

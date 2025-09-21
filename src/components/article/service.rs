@@ -9,7 +9,7 @@ pub async fn get_article(
   state: &AppState,
   path: String,
   r#type: String,
-) -> Result<Vec<Value>, AppError> {
+) -> ServiceResult<Vec<Value>> {
   let mut data = vec![];
   if r#type == "time" {
     for path in path.split(',') {
@@ -40,7 +40,7 @@ pub async fn update_article(
   action: Option<String>,
   path: String,
   r#type: String,
-) -> Result<Vec<wl_counter::Model>, AppError> {
+) -> ServiceResult<Vec<wl_counter::Model>> {
   let mut data = vec![];
   if r#type == "time" {
     match state.repo.counter().get_counter(&path).await? {

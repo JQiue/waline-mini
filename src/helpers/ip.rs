@@ -10,7 +10,7 @@ impl Ip2Region {
     match ip2region::Searcher::new(file) {
       Ok(searcher) => Ok(Self { searcher }),
       Err(err) => {
-        tracing::error!("Can't find xdb file: {}", err);
+        tracing::warn!("Can't find xdb file, ip2region cannot be used: {err}");
         Err(())
       }
     }

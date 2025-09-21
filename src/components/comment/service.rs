@@ -19,6 +19,7 @@ use crate::{
     ua,
   },
   prelude::AppError,
+  types::ServiceResult,
 };
 
 pub async fn get_comment_info(
@@ -28,7 +29,7 @@ pub async fn get_comment_info(
   page_size: i32,
   sort_by: String,
   token: Result<String, AppError>,
-) -> Result<Value, AppError> {
+) -> ServiceResult<Value> {
   if let Some(result) = state.comment_cache.lock().unwrap().get(path.clone(), page) {
     return Ok(result);
   }
@@ -162,7 +163,7 @@ pub async fn get_comment_info_by_admin(
   keyword: String,
   status: String,
   page: i32,
-) -> Result<Value, AppError> {
+) -> ServiceResult<Value> {
   let (
     ItemsAndPagesNumber {
       number_of_items: _,
@@ -319,7 +320,7 @@ pub async fn create_comment<'a>(
   Ok(data)
 }
 
-pub async fn delete_comment(state: &AppState, id: u32, token: String) -> Result<(), AppError> {
+pub async fn delete_comment(state: &AppState, id: u32, token: String) -> ServiceResult<()> {
   let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
   let user = state
     .repo
@@ -353,7 +354,7 @@ pub async fn update_comment(
   ua: Option<String>,
   url: Option<String>,
   sticky: Option<i8>,
-) -> Result<Value, AppError> {
+) -> ServiceResult<Value> {
   let mut active_comment = wl_comment::ActiveModel {
     id: Set(id),
     updated_at: Set(Some(time::utc_now())),

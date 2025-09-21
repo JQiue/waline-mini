@@ -1,6 +1,6 @@
 use crate::components::migration::model::CommentData;
-use crate::prelude::*;
 
+use crate::traits::LoggingResultErr;
 use crate::{
   app::AppState,
   entities::{wl_comment, wl_counter, wl_users},
