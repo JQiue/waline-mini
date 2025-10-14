@@ -16,4 +16,6 @@ pub fn config(cfg: &mut ServiceConfig) {
   cfg.service(handler::get_2fa);
   cfg.service(handler::verification);
   cfg.service(handler::get_user_info);
+  cfg.service(handler::oauth);
+  cfg.service(handler::oauth_callback);
 }

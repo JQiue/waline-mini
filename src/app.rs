@@ -16,7 +16,7 @@ use crate::{
   config::EnvConfig,
   error::AppError,
   helpers::ip::Ip2Region,
-  middlewares::{SecureDomians, header_middleware},
+  middlewares::SecureDomians,
   migration::migrate,
   repository::RepositoryManager,
 };
@@ -25,7 +25,7 @@ use actix_cors::Cors;
 use actix_web::{
   App, HttpMessage, HttpRequest, HttpResponse, HttpServer,
   dev::Service,
-  http::header::{HOST, USER_AGENT},
+  http::header::USER_AGENT,
   middleware,
   web::{self, ServiceConfig},
 };

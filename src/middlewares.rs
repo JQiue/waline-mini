@@ -1,10 +1,9 @@
 use std::future::{Ready, ready};
 
 use actix_web::{
-  Error, HttpMessage, HttpResponse,
+  Error, HttpResponse,
   body::EitherBody,
   dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
-  http::header::HOST,
 };
 use futures_util::{FutureExt as _, TryFutureExt as _, future::LocalBoxFuture};
 
@@ -86,26 +85,4 @@ where
       .map_ok(ServiceResponse::map_into_left_body)
       .boxed_local()
   }
-}
-
-use std::future::Future;
-
-pub fn header_middleware<S, B>(
-  req: ServiceRequest, // 去掉 mut，如果不需要修改 req；但你需要，所以保持 mut
-  srv: S,
-) -> impl Future<Output = Result<ServiceResponse<B>, Error>> + 'static
-where
-  S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
-  S::Future: 'static, // 去掉 HRTB，因为不再借用
-{
-  // 同步修改 req（extensions_mut 需要 mut req）
-  if let Some(host_header) = req.headers().get(HOST) {
-    if let Ok(host_value) = host_header.to_str() {
-      req.extensions_mut().insert(host_value.to_string());
-    }
-  }
-
-  let fut = srv.call(req); // 消耗 req，所有权转移到 fut 中
-
-  async move { fut.await } // fut 现在持有 req 的所有权，不借用
 }

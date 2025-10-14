@@ -113,7 +113,7 @@ pub fn build_data_entry(
     pid: comment.pid,
     rid: comment.rid,
     comment: safe_html,
-    avatar: get_avatar(&comment.mail.unwrap_or("default".to_owned())),
+    avatar: get_avatar(&comment.mail.clone().unwrap_or("default".to_owned())),
     level,
     label: None,
     sticky: comment.sticky,
@@ -181,7 +181,7 @@ impl GetCommentQuery {
 pub fn create_comment_model(
   user_id: Option<i32>,
   comment: String,
-  link: String,
+  link: Option<String>,
   mail: String,
   nick: String,
   ua: String,
@@ -194,7 +194,7 @@ pub fn create_comment_model(
   wl_comment::ActiveModel {
     user_id: Set(user_id),
     comment: Set(Some(comment)),
-    link: Set(Some(link)),
+    link: Set(link),
     mail: Set(Some(mail)),
     nick: Set(Some(nick)),
     ua: Set(Some(ua)),
@@ -234,7 +234,7 @@ pub struct CreateCommentQuery {
 pub struct CreateCommentBody {
   pub comment: String,
   // or ""
-  pub link: String,
+  pub link: Option<String>,
   // or ""
   pub mail: String,
   // or ""

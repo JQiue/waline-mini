@@ -1,6 +1,6 @@
 mod comment;
 mod counter;
-mod user;
+pub mod user;
 
 use sea_orm::DatabaseConnection;
 

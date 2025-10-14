@@ -29,6 +29,9 @@ pub struct SetUserProfileBody {
   pub avatar: Option<String>,
   #[serde(rename = "2fa")]
   pub two_factor_auth: Option<String>,
+  pub qq: Option<String>,
+  pub weibo: Option<String>,
+  pub github: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -69,4 +72,28 @@ pub struct UserPasswordQuery {
 #[derive(Deserialize)]
 pub struct UserPasswordBody {
   pub email: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct OAuthQuery {
+  pub r#type: String,
+  pub redirect: Option<String>,
+  pub state: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct OAuthCallbackQuery {
+  pub oauth_verifier: Option<String>,
+  pub oauth_token: Option<String>,
+  pub code: String,
+  pub r#type: String,
+  pub state: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OauthUserInfo {
+  pub id: String,
+  pub name: String,
+  pub avatar: Option<String>,
+  pub email: Option<String>,
 }

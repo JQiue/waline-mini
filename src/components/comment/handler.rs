@@ -143,7 +143,7 @@ async fn create_comment(
   if state
     .repo
     .comment()
-    .is_duplicate(&url, &mail, &nick, &link, &comment)
+    .is_duplicate(&url, &mail, &nick, link.as_deref(), &comment)
     .await
     .unwrap()
     && !is_admin
