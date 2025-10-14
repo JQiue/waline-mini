@@ -5,11 +5,11 @@ edition = "2024"
 publish = false
 
 [dependencies]
-actix-cors = "0.7.0"
+actix-cors = "0.7.1"
 actix-web = { version = "4.5.1", features = ["rustls"] }
 dotenvy = "0.15.7"
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.17", features = [
+tracing-subscriber = { version = "0.3.20", features = [
   "env-filter",
   "local-time",
 ] }
@@ -20,13 +20,13 @@ sea-orm = { version = "1.1.2", features = [
   "macros",
   "debug-print",
 ] }
-serde = { version = "=1.0.204", features = ["derive"] }
-serde_json = "1.0.115"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
 woothee = "0.13.0"
-chrono = "0.4.37"
-pulldown-cmark = "0.10.3"
+chrono = "0.4.42"
+pulldown-cmark = "0.13.0"
 envy = "0.4.2"
-helpers = { version = "0.5.3", features = ["hash", "jwt", "time", "uuid"] }
+helpers = { version = "0.6.1", features = ["hash", "jwt", "time", "uuid"] }
 lettre = { version = "0.11.11", default-features = false, features = [
   "builder",
   "hostname",
@@ -34,14 +34,14 @@ lettre = { version = "0.11.11", default-features = false, features = [
   "smtp-transport",
   "rustls-tls",
 ] }
-strfmt = "0.2.4"
-ammonia = "4.0.0"
-regex = "1.10.3"
+strfmt = "0.2.5"
+ammonia = "4.1.2"
+regex = "1.12.2"
 instant-akismet = "0.2.0"
-reqwest = { version = "0.12.12", default-features = false, features = [
+reqwest = { version = "0.12.24", default-features = false, features = [
   "rustls-tls",
 ] }
-totp-rs = { version = "5.6.0", features = ["otpauth", "gen_secret"] }
+totp-rs = { version = "5.7.0", features = ["otpauth", "gen_secret"] }
 ip2region = "0.1.0"
 migration = { path = "migration" }
 futures-util = "0.3.31"
@@ -49,6 +49,9 @@ futures-util = "0.3.31"
 [features]
 default = []
 leancloud = []
+
+[profile.dev]
+opt-level = 0
 
 [package.metadata.release]
 push = true
