@@ -50,7 +50,7 @@ pub async fn user_register(
     active_user.display_name = Set(display_name);
     active_user.url = Set(Some(url));
     active_user.password = Set(hashed);
-    let token = uuid::uuid(&Alphabet::NUMBERS, 4);
+    let token = uuid::nanoid(&Alphabet::NUMBERS, 4);
     active_user.user_type = Set(format!(
       "verify:{}:{}",
       token,
@@ -81,7 +81,7 @@ pub async fn user_register(
       active_user.user_type = Set("administrator".to_string());
       data = json!({});
     } else {
-      let token = uuid::uuid(&Alphabet::NUMBERS, 4);
+      let token = uuid::nanoid(&Alphabet::NUMBERS, 4);
       active_user.user_type = Set(format!(
         "verify:{}:{}",
         token,
@@ -134,6 +134,11 @@ pub async fn user_login(state: &AppState, body: UserLoginBody) -> ServiceResult<
   }
   let token = jwt::sign(email, &state.jwt_token, 2592000)?;
   let mail_md5 = hash::md5(&user.email);
+  let avatar = if let Some(avatar) = user.avatar {
+    avatar
+  } else {
+    get_avatar(&user.email)
+  };
   let data = json!({
     "display_name": user.display_name,
     "email": user.email,
@@ -141,7 +146,7 @@ pub async fn user_login(state: &AppState, body: UserLoginBody) -> ServiceResult<
     "type": user.user_type,
     "label": user.label,
     "url": user.url,
-    "avatar": get_avatar(&user.email),
+    "avatar":avatar,
     "github": user.github,
     "twitter": user.twitter,
     "facebook": user.facebook,
@@ -171,13 +176,18 @@ pub async fn get_login_user_info(state: &AppState, token: String) -> ServiceResu
     .await?
     .ok_or(AppError::UserNotFound)?;
   let mail_md5 = hash::md5(&user.email);
+  let avatar = if let Some(avatar) = user.avatar {
+    avatar
+  } else {
+    get_avatar(&user.email)
+  };
   Ok(json! ({
       "display_name": user.display_name,
       "email": user.email,
       "type": user.user_type,
       "label": user.label,
       "url": user.url,
-      "avatar": get_avatar(&user.email),
+      "avatar": avatar,
       "github": user.github,
       "twitter": user.twitter,
       "facebook": user.facebook,
@@ -202,6 +212,9 @@ pub async fn set_user_profile(
     password,
     avatar,
     two_factor_auth,
+    qq,
+    weibo,
+    github,
   } = body;
   let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
   let mut active_user = state
@@ -229,6 +242,15 @@ pub async fn set_user_profile(
   }
   if let Some(two_factor_auth) = two_factor_auth {
     active_user.two_factor_auth = Set(Some(two_factor_auth));
+  }
+  if let Some(qq) = qq {
+    active_user.qq = Set(Some(qq));
+  }
+  if let Some(weibo) = weibo {
+    active_user.weibo = Set(Some(weibo));
+  }
+  if let Some(github) = github {
+    active_user.github = Set(Some(github));
   }
   state.repo.user().update_user(active_user).await?;
   Ok(json!({}))

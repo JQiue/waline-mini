@@ -110,7 +110,7 @@ impl CommentRepository<'_> {
     url: &str,
     mail: &str,
     nick: &str,
-    link: &str,
+    link: Option<&str>,
     comment: &str,
   ) -> Result<bool, DbErr> {
     let res = wl_comment::Entity::find()

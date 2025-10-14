@@ -87,7 +87,13 @@ pub async fn get_comment_info(
       if let Some(user) = state.repo.user().get_user_by_id(user_id as u32).await? {
         parrent_data.label = user.label;
         parrent_data.r#type = Some(user.user_type);
+        if let Some(avatar) = user.avatar {
+          parrent_data.avatar = avatar;
+        }
       }
+    } else {
+      parrent_data.avatar =
+        get_avatar(&parrent_comment.mail.clone().unwrap_or("default".to_owned()));
     }
 
     if is_admin {
@@ -125,8 +131,15 @@ pub async fn get_comment_info(
         if let Some(user) = user {
           subcomment_data.label = user.label;
           subcomment_data.r#type = Some(user.user_type);
+          if let Some(avatar) = user.avatar {
+            parrent_data.avatar = avatar;
+          }
         }
+      } else {
+        parrent_data.avatar =
+          get_avatar(&parrent_comment.mail.clone().unwrap_or("default".to_owned()));
       }
+
       if is_admin {
         subcomment_data.mail = subcomment_data.mail.clone();
         subcomment_data.ip = subcomment_data.ip.clone();
@@ -206,7 +219,7 @@ pub async fn get_comment_info_by_admin(
 pub async fn create_comment<'a>(
   state: &AppState,
   comment: String,
-  link: String,
+  link: Option<String>,
   mail: String,
   nick: String,
   ua: String,
@@ -274,7 +287,11 @@ pub async fn create_comment<'a>(
         data["mail"] = json!(user.email);
         data["type"] = json!(user.user_type);
         data["user_id"] = json!(user.id);
-        avatar = get_avatar(&user.email);
+        if let Some(user_avatar) = user.avatar {
+          avatar = user_avatar;
+        } else {
+          avatar = get_avatar(&user.email);
+        }
       }
     }
     UserType::Administrator(email) => {
@@ -285,7 +302,11 @@ pub async fn create_comment<'a>(
         data["mail"] = json!(user.email);
         data["type"] = json!(user.user_type);
         data["user_id"] = json!(user.id);
-        avatar = get_avatar(&user.email);
+        if let Some(user_avatar) = user.avatar {
+          avatar = user_avatar;
+        } else {
+          avatar = get_avatar(&user.email);
+        }
       }
     }
   }

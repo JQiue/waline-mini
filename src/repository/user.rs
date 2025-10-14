@@ -8,6 +8,14 @@ pub enum UserQueryBy<'a> {
   Email(&'a str),
 }
 
+pub enum UserQueryBySocial {
+  QQ,
+  Weibo,
+  Github,
+  Twitter,
+  Facebook,
+}
+
 #[derive(Debug, Clone)]
 pub struct UserRepository<'a> {
   pub db: &'a DatabaseConnection,
@@ -24,6 +32,22 @@ impl<'a> UserRepository<'a> {
 
   pub async fn get_user_by_id(&self, id: u32) -> Result<Option<wl_users::Model>, DbErr> {
     self.get_user(UserQueryBy::Id(id)).await
+  }
+
+  pub async fn get_user_by_social(
+    &self,
+    r#type: UserQueryBySocial,
+    id: &str,
+  ) -> Result<Option<wl_users::Model>, DbErr> {
+    let mut select = wl_users::Entity::find();
+    match r#type {
+      UserQueryBySocial::QQ => select = select.filter(wl_users::Column::Qq.eq(id)),
+      UserQueryBySocial::Weibo => select = select.filter(wl_users::Column::Weibo.eq(id)),
+      UserQueryBySocial::Github => select = select.filter(wl_users::Column::Github.eq(id)),
+      UserQueryBySocial::Twitter => select = select.filter(wl_users::Column::Twitter.eq(id)),
+      UserQueryBySocial::Facebook => select = select.filter(wl_users::Column::Facebook.eq(id)),
+    }
+    select.one(self.db).await
   }
 
   async fn get_user(&self, query_by: UserQueryBy<'a>) -> Result<Option<wl_users::Model>, DbErr> {

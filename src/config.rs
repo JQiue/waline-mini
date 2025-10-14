@@ -50,6 +50,10 @@ fn default_false() -> bool {
   false
 }
 
+fn default_oauth_url() -> String {
+  "https://oauth.lithub.cc".to_string()
+}
+
 #[derive(Deserialize)]
 pub struct EnvConfig {
   #[serde(default = "default_workers")]
@@ -90,6 +94,8 @@ pub struct EnvConfig {
   #[serde(default = "default_false")]
   pub disable_region: bool,
   pub ip2region_db: Option<String>,
+  #[serde(default = "default_oauth_url")]
+  pub oauth_url: String,
 }
 
 impl EnvConfig {

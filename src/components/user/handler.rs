@@ -4,13 +4,22 @@ use actix_web::{
   post, put,
   web::{Data, Json, Path, Query},
 };
+use ammonia::url;
+use helpers::{hash, jwt, uuid::Alphabet};
+use migration::ExprTrait;
+use sea_orm::{ActiveValue::Set, IntoActiveModel, RelationDef};
+use serde_json::json;
+use tracing_subscriber::fmt::format;
 
 use crate::{
   app::AppState,
-  components::user::{model::*, service},
+  components::user::{self, model::*, service},
+  config::EnvConfig,
+  entities::wl_users,
   error::AppError,
   helpers::header::{extract_host, extract_origin, extract_token},
   prelude::*,
+  repository::user::UserQueryBySocial,
 };
 
 #[post("/user")]
@@ -153,4 +162,179 @@ pub async fn modify_password(
   service::modify_password(&state, email, &origin, &lang)
     .await
     .into_http_response(Some(&lang))
+}
+
+#[get("/oauth")]
+pub async fn oauth(query: Query<OAuthQuery>) -> Result<HttpResponse, AppError> {
+  let Query(OAuthQuery {
+    r#type,
+    redirect,
+    state,
+  }) = query.clone();
+
+  let EnvConfig { oauth_url, .. } = EnvConfig::load_env()?;
+  let server_url = "http://127.0.0.1:8360";
+  let mut redirect_url_params = url::form_urlencoded::Serializer::new(String::new());
+  let mut oauth_params = url::form_urlencoded::Serializer::new(String::new());
+  redirect_url_params.append_pair("type", &r#type);
+  if let Some(state) = state
+    && state.len() != 0
+  {
+    oauth_params.append_pair("state", &state);
+  };
+
+  let redirect_url = format!(
+    "{server_url}/api/oauth/callback?{}",
+    redirect_url_params.finish()
+  );
+  println!("redirect_url={}", redirect_url);
+  oauth_params.append_pair("redirect", &redirect_url);
+  let oauth_url = format!("{oauth_url}/{}?{}", r#type, oauth_params.finish());
+  return Ok(
+    HttpResponse::Found()
+      .append_header((http::header::LOCATION, oauth_url))
+      .finish(),
+  );
+}
+
+#[get("/oauth/callback")]
+pub async fn oauth_callback(
+  state: Data<AppState>,
+  query: Query<OAuthCallbackQuery>,
+) -> Result<HttpResponse, AppError> {
+  let OAuthCallbackQuery {
+    oauth_verifier,
+    oauth_token,
+    code,
+    r#type,
+    state: token,
+  } = query.0;
+
+  let EnvConfig { oauth_url, .. } = EnvConfig::load_env()?;
+  // 已经拥有了 code 或者 X 平台必须的：oauth_token 和 oauth_verifier
+  let params = json!({
+    "code": code,
+    "oauth_token": oauth_token,
+    "oauth_verifier": oauth_verifier,
+  });
+
+  // 获取第三方用户信息
+  let url = format!("{oauth_url}/{}?code={}", r#type, code);
+  let resp = reqwest::get(url).await.unwrap();
+  let mut user_by_oauth = resp.json::<OauthUserInfo>().await.unwrap();
+
+  // 通过 user.id 和 r#type 去数据库查找用户
+  let social_type = match r#type.as_str() {
+    "qq" => UserQueryBySocial::QQ,
+    "weibo" => UserQueryBySocial::Weibo,
+    "github" => UserQueryBySocial::Github,
+    _ => return Err(AppError::Error),
+  };
+  let user_by_social = state
+    .repo
+    .user()
+    .get_user_by_social(social_type, &user_by_oauth.id)
+    .await?;
+
+  // 如果通过社交找到用户，则是签发 token 进行登录
+  if let Some(user) = user_by_social {
+    let token = jwt::sign(user.email, &state.jwt_token, 2592000)?;
+    let redirect_url = format!("/ui/profile?token={token}");
+    return Ok(
+      HttpResponse::Found()
+        .append_header((http::header::LOCATION, redirect_url))
+        .finish(),
+    );
+  }
+
+  // 否则，拼接用户第三方 id 查找用户 id
+  if user_by_oauth.email.is_none() {
+    user_by_oauth.email = Some(format!("{}@mail.{}", user_by_oauth.id, r#type.clone()));
+  }
+
+  // 如果携带了 state，意味着是个关联操作
+  if let Some(token) = token
+    && token != ""
+  {
+    let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
+    let user_by_current: Option<wl_users::Model> =
+      state.repo.user().get_user_by_email(&email).await?;
+    if let Some(user) = user_by_current {
+      let mut active_user = user.clone().into_active_model();
+      match r#type.as_str() {
+        "qq" => active_user.qq = Set(Some(user_by_oauth.id)),
+        "weibo" => active_user.weibo = Set(Some(user_by_oauth.id)),
+        "github" => active_user.github = Set(Some(user_by_oauth.id)),
+        _ => return Err(AppError::Error),
+      };
+      if user.avatar.is_none() && user_by_oauth.avatar.is_some() {
+        active_user.avatar = Set(user_by_oauth.avatar);
+      }
+      state.repo.user().update_user(active_user).await?;
+      println!("关联当前用户");
+      return Ok(
+        HttpResponse::Found()
+          .append_header((http::header::LOCATION, "/ui/profile"))
+          .finish(),
+      );
+    }
+  }
+
+  let user_by_email = state
+    .repo
+    .user()
+    .get_user_by_email(&user_by_oauth.email.clone().unwrap())
+    .await?;
+
+  // 尝试通过拼接 id 查找用户，如果有则更新，没有则创建
+  if let Some(user) = user_by_email {
+    let mut active_user = user.clone().into_active_model();
+    match r#type.as_str() {
+      "qq" => active_user.qq = Set(Some(user_by_oauth.id)),
+      "weibo" => active_user.weibo = Set(Some(user_by_oauth.id)),
+      "github" => active_user.github = Set(Some(user_by_oauth.id)),
+      _ => return Err(AppError::Error),
+    };
+    if user.avatar.is_none() && user_by_oauth.avatar.is_some() {
+      active_user.avatar = Set(user_by_oauth.avatar);
+    }
+    state.repo.user().update_user(active_user).await?;
+  } else {
+    let user_type = if state.repo.user().is_first_user().await? {
+      "administrator"
+    } else {
+      "guest"
+    };
+    let hashed = hash::bcrypt_custom(
+      &helpers::uuid::nanoid(&Alphabet::DEFAULT, 8),
+      8,
+      helpers::hash::Version::TwoA,
+    )?;
+    let mut active_user: wl_users::ActiveModel = wl_users::ActiveModel {
+      display_name: Set(user_by_oauth.name),
+      email: Set(user_by_oauth.email.clone().unwrap()),
+      avatar: Set(user_by_oauth.avatar),
+      password: Set(hashed),
+      user_type: Set(user_type.to_string()),
+      url: Set(Some("".to_string())),
+      ..Default::default()
+    };
+    match r#type.as_str() {
+      "qq" => active_user.qq = Set(Some(user_by_oauth.id)),
+      "weibo" => active_user.weibo = Set(Some(user_by_oauth.id)),
+      "github" => active_user.github = Set(Some(user_by_oauth.id)),
+      _ => return Err(AppError::Error),
+    };
+    println!("创建用户");
+    state.repo.user().create_user(active_user).await?;
+  }
+
+  let token = jwt::sign(user_by_oauth.email, &state.jwt_token, 2592000)?;
+  let redirect_url = format!("/ui/profile?token={token}");
+
+  return Ok(
+    HttpResponse::Found()
+      .append_header((http::header::LOCATION, redirect_url))
+      .finish(),
+  );
 }

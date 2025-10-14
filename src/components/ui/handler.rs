@@ -1,5 +1,5 @@
 use actix_web::{
-  HttpResponse, get,
+  HttpRequest, HttpResponse, get,
   http::{self, header::ContentType},
   web::{Data, Query},
 };
@@ -8,6 +8,8 @@ use helpers::jwt;
 use crate::{
   app::AppState,
   components::ui::{model::*, service},
+  error::AppError,
+  helpers::header::extract_token,
 };
 
 #[get("/profile")]
@@ -15,8 +17,8 @@ pub async fn ui_profile_page(
   state: Data<AppState>,
   query: Query<UIProfilePageQuery>,
 ) -> HttpResponse {
-  if query.token.is_some() {
-    if jwt::verify::<String>(&query.token.clone().unwrap(), &state.jwt_token).is_ok() {
+  if let Some(token) = query.0.token {
+    if jwt::verify::<String>(&token, &state.jwt_token).is_ok() {
       HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(service::admin_page().await)
@@ -33,16 +35,28 @@ pub async fn ui_profile_page(
 }
 
 #[get("/login")]
-pub async fn ui_login_page(query: Query<UiLoginPageQeury>) -> HttpResponse {
-  if query.redirect.is_some() {
-    HttpResponse::Found()
-      .append_header((http::header::LOCATION, query.redirect.clone().unwrap()))
-      .finish()
-  } else {
+pub async fn ui_login_page(
+  req: HttpRequest,
+  state: Data<AppState>,
+  query: Query<UiLoginPageQeury>,
+) -> Result<HttpResponse, AppError> {
+  if let Ok(token) = extract_token(&req) {
+    if let Ok(_) = jwt::verify::<String>(&token, &state.jwt_token)
+      && let Some(redirect) = query.0.redirect
+    {
+      return Ok(
+        HttpResponse::Found()
+          .append_header((http::header::LOCATION, redirect))
+          .finish(),
+      );
+    }
+  }
+
+  Ok(
     HttpResponse::Ok()
       .content_type(ContentType::html())
-      .body(service::admin_page().await)
-  }
+      .body(service::admin_page().await),
+  )
 }
 
 #[get("/migration")]
