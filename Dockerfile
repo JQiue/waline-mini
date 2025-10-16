@@ -1,7 +1,6 @@
-FROM alpine:latest
+FROM scratch
 WORKDIR /app
-ENV host 0.0.0.0
-ENV database_url sqlite://./waline.sqlite?mode=rw
+ENV HOST 0.0.0.0
 COPY ./target/x86_64-unknown-linux-musl/release/waline-mini .
 EXPOSE 8360
-CMD "./waline-mini"
+ENTRYPOINT ["./waline-mini"]

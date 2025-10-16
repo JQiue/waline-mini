@@ -65,17 +65,28 @@ export SITE_URL=your_site_url
 
 ### Docker
 
-```sh
-docker run -d \
-  --name waline-mini \
-  -e JWT_TOKEN=your_secret_key \
-  -e SITE_NAME=your_site_name \
-  -e SITE_URL=your_site_url \
-  -p 8360:8360 \
-  jqiue/waline
+```yml
+services:
+  waline:
+    image: jqiue/waline-mini:latest
+    container_name: waline-mini
+    ports:
+      - "8360:8360"
+    volumes:
+      - waline-db:/app/db
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/db/waline.sqlite?mode=rwc}
+      - JWT_TOKEN=${JWT_TOKEN}
+      - SITE_NAME=${SITE_NAME}
+      - SITE_URL=${SITE_URL}
+    restart: unless-stopped
+
+volumes:
+  waline-db:
+    driver: local
 ```
 
-由于镜像打包时已内置 SQLite 作为默认存储，使用 SQLite 作为存储时，无需指定`DATABASE_URL`，如果想使用别的数据库只需要添加`-e DATABASE_URL`环境进行覆盖即可
+如果想使用别的数据库只需要添加`-e DATABASE_URL`环境进行覆盖即可
 
 ### Shuttle
 
