@@ -2,7 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.11.0](https://github.com/JQiue/waline-rs/compare/v0.10.0..0.11.0) - 2025-02-26
+## [0.12.0](https://github.com/JQiue/waline-rs/compare/v0.11.0..0.12.0) - 2025-10-16
+
+### 🚀 Features
+
+- Add database migration support - ([a6f478d](https://github.com/JQiue/waline-rs/commit/a6f478dae83afaa3cdb122818b3ca2052f25862f))
+- Impl secure domian check - ([21774f3](https://github.com/JQiue/waline-rs/commit/21774f37525558bccb802a2e6f054bd0a591732e))
+- Add a user social login function - ([1a97823](https://github.com/JQiue/waline-rs/commit/1a97823ad713920d2c091472e5faca335819798b))
+- Enhance user registration with email service check and user type handling - ([8b32d1a](https://github.com/JQiue/waline-rs/commit/8b32d1a00eea3a1adf5aa55e73363f9a483a2e42))
+
+### 🐛 Bug Fixes
+
+- Fixed an issue with reactive not updating correctly - ([8d4e4b4](https://github.com/JQiue/waline-rs/commit/8d4e4b4bc702625cccf2767a607cc0d091a99c58))
+- Fixed an existing user type verification logic error - ([daf1b4d](https://github.com/JQiue/waline-rs/commit/daf1b4dfa8d66182534fd464b1ae5d9e9b2bf10a))
+- Fixed spelling mistakes in the configuration and update the loading logic of environment variables - ([766e697](https://github.com/JQiue/waline-rs/commit/766e6972e6529cf76d257df379031547cf1a9689))
+
+### ⚙️ Miscellaneous Tasks
+
+- Remove leancloud.sh in favor of GitHub Actions workflow - ([28d5c0c](https://github.com/JQiue/waline-rs/commit/28d5c0c6b7da97a5302ddd72acd21eedea1657c2))
+- Update README - ([2897802](https://github.com/JQiue/waline-rs/commit/2897802e122b05211ee8b32e26db927a72555b4b))
+- Update README.md - ([b4eb382](https://github.com/JQiue/waline-rs/commit/b4eb38217163ebf7dc27826da140e7dcb748dd8a))
+- Update deps - ([883298f](https://github.com/JQiue/waline-rs/commit/883298f87ff8ac88e2d71f4434f4491702e204b4))
+- Update README.md - ([75cff96](https://github.com/JQiue/waline-rs/commit/75cff964d2b9f0123ce296e1b24e9e9e15722a56))
+- Update Docker configuration and enhance README for improved deployment instructions - ([0b19c6b](https://github.com/JQiue/waline-rs/commit/0b19c6b748e6ff2266f2d80e7079e4c33cd52dc1))
+
+### Refacotr
+
+- Refactor code - ([dee3127](https://github.com/JQiue/waline-rs/commit/dee31273d2338d8de3562dd160cbbf3a8b2bbdd5))
+
+## ❤️ New Contributors
+
+* @JQiue made their first contribution
+## [0.11.0](https://github.com/JQiue/waline-rs/compare/v0.10.0..v0.11.0) - 2025-02-26
 
 ### 🚀 Features
 
@@ -28,6 +59,7 @@ All notable changes to this project will be documented in this file.
 
 - Update README - ([f4bf562](https://github.com/JQiue/waline-rs/commit/f4bf5629231c4a0ec83e27005899dd9f06e1cb71))
 - Update release workflow to simplify target labels - ([85b9e31](https://github.com/JQiue/waline-rs/commit/85b9e317b9f4b66fb4d3f6d379717f0c24d3ad60))
+- Release waline-mini version 0.11.0 - ([079132a](https://github.com/JQiue/waline-rs/commit/079132ae984fca8b4064014ca20cd58ecd450d63))
 
 ## [0.10.0](https://github.com/JQiue/waline-rs/compare/v0.9.2..v0.10.0) - 2025-02-21
 
