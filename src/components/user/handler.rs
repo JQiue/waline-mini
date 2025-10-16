@@ -15,7 +15,7 @@ use crate::{
   config::EnvConfig,
   entities::wl_users,
   error::AppError,
-  helpers::header::{extract_host, extract_origin, extract_token},
+  helpers::header::{extract_host, extract_origin, extract_token, get_server_url},
   prelude::*,
   repository::user::UserQueryBySocial,
 };
@@ -163,7 +163,7 @@ pub async fn modify_password(
 }
 
 #[get("/oauth")]
-pub async fn oauth(query: Query<OAuthQuery>) -> Result<HttpResponse, AppError> {
+pub async fn oauth(req: HttpRequest, query: Query<OAuthQuery>) -> Result<HttpResponse, AppError> {
   let Query(OAuthQuery {
     r#type,
     redirect: _,
@@ -171,7 +171,8 @@ pub async fn oauth(query: Query<OAuthQuery>) -> Result<HttpResponse, AppError> {
   }) = query.clone();
 
   let EnvConfig { oauth_url, .. } = EnvConfig::load_env()?;
-  let server_url = "http://127.0.0.1:8360";
+
+  let server_url = get_server_url(&req)?;
   let mut redirect_url_params = url::form_urlencoded::Serializer::new(String::new());
   let mut oauth_params = url::form_urlencoded::Serializer::new(String::new());
   redirect_url_params.append_pair("type", &r#type);

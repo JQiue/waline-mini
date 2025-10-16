@@ -1,6 +1,6 @@
 use actix_web::HttpRequest;
 
-use crate::error::AppError;
+use crate::{config::EnvConfig, error::AppError};
 
 pub fn extract_token(req: &HttpRequest) -> Result<String, AppError> {
   let auth_header = req
@@ -51,4 +51,16 @@ pub fn extract_host(req: &HttpRequest) -> String {
     .and_then(|h| h.to_str().ok())
     .unwrap_or_default()
     .to_string()
+}
+
+pub fn get_server_url(req: &HttpRequest) -> Result<String, AppError> {
+  let EnvConfig { server_url, .. } = EnvConfig::load_env()?;
+  if let Some(server_url) = server_url {
+    Ok(server_url)
+  } else {
+    let connection_info = req.connection_info();
+    let protocol = connection_info.scheme();
+    let host = connection_info.host();
+    Ok(format!("{protocol}://{host}"))
+  }
 }

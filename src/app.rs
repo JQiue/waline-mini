@@ -111,7 +111,6 @@ pub struct AppState {
   pub ip2region: Option<Ip2Region>,
   pub site_url: String,
   pub site_name: String,
-  pub server_url: Option<String>,
 }
 
 async fn health_check(req: HttpRequest) -> HttpResponse {
@@ -154,7 +153,6 @@ pub async fn start() -> Result<(), AppError> {
     secure_domains,
     site_name,
     site_url,
-    server_url,
     ..
   } = EnvConfig::load_env()?;
   let conn = migrate(&database_url).await?;
@@ -183,7 +181,6 @@ pub async fn start() -> Result<(), AppError> {
     ip2region,
     site_url,
     site_name,
-    server_url,
     comment_cache: Arc::new(Mutex::new(comment_cache)),
     rate_limiter: Arc::new(RateLimiter::new(ipqps)),
   };

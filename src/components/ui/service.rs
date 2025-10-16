@@ -1,13 +1,12 @@
 use std::env;
 
-pub async fn admin_page(site_url: &str, site_name: &str, server_url: Option<String>) -> String {
+pub async fn admin_page(site_url: &str, site_name: &str, server_url: &str) -> String {
   let recaptcha_v3_key = env::var("recaptchaV3Key")
     .ok()
     .unwrap_or("undefined".to_string());
   let turnstile_key = env::var("turnstileKey")
     .ok()
     .unwrap_or("undefined".to_string());
-  let server_url = server_url.unwrap_or("".to_string());
   format!(
     r#"<!doctype html>
        <html>
