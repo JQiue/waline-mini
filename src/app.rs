@@ -109,6 +109,9 @@ pub struct AppState {
   pub disable_region: bool,
   pub comment_cache: Arc<Mutex<CommentCache>>,
   pub ip2region: Option<Ip2Region>,
+  pub site_url: String,
+  pub site_name: String,
+  pub server_url: Option<String>,
 }
 
 async fn health_check(req: HttpRequest) -> HttpResponse {
@@ -148,7 +151,10 @@ pub async fn start() -> Result<(), AppError> {
     disable_useragent,
     disable_region,
     ip2region_db,
-    secure_domians,
+    secure_domains,
+    site_name,
+    site_url,
+    server_url,
     ..
   } = EnvConfig::load_env()?;
   let conn = migrate(&database_url).await?;
@@ -175,6 +181,9 @@ pub async fn start() -> Result<(), AppError> {
     disable_useragent,
     disable_region,
     ip2region,
+    site_url,
+    site_name,
+    server_url,
     comment_cache: Arc::new(Mutex::new(comment_cache)),
     rate_limiter: Arc::new(RateLimiter::new(ipqps)),
   };
@@ -190,7 +199,7 @@ pub async fn start() -> Result<(), AppError> {
           let fut = srv.call(req);
           async { fut.await }
         })
-        .wrap(SecureDomians::new(secure_domians.clone()))
+        .wrap(SecureDomians::new(secure_domains.clone()))
         .wrap(middleware::Logger::default())
         .wrap(Cors::permissive())
         .app_data(web::Data::new(state.clone()))

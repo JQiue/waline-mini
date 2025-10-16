@@ -19,9 +19,9 @@ pub async fn ui_profile_page(
 ) -> HttpResponse {
   if let Some(token) = query.0.token {
     if jwt::verify::<String>(&token, &state.jwt_token).is_ok() {
-      HttpResponse::Ok()
-        .content_type(ContentType::html())
-        .body(service::admin_page().await)
+      HttpResponse::Ok().content_type(ContentType::html()).body(
+        service::admin_page(&state.site_url, &state.site_name, state.server_url.clone()).await,
+      )
     } else {
       HttpResponse::Found()
         .append_header((http::header::LOCATION, "/ui/login".to_string()))
@@ -30,7 +30,7 @@ pub async fn ui_profile_page(
   } else {
     HttpResponse::Ok()
       .content_type(ContentType::html())
-      .body(service::admin_page().await)
+      .body(service::admin_page(&state.site_url, &state.site_name, state.server_url.clone()).await)
   }
 }
 
@@ -55,33 +55,33 @@ pub async fn ui_login_page(
   Ok(
     HttpResponse::Ok()
       .content_type(ContentType::html())
-      .body(service::admin_page().await),
+      .body(service::admin_page(&state.site_url, &state.site_name, state.server_url.clone()).await),
   )
 }
 
 #[get("/migration")]
-pub async fn ui_migration_page() -> HttpResponse {
+pub async fn ui_migration_page(state: Data<AppState>) -> HttpResponse {
   HttpResponse::Ok()
     .content_type(ContentType::html())
-    .body(service::admin_page().await)
+    .body(service::admin_page(&state.site_url, &state.site_name, state.server_url.clone()).await)
 }
 
 #[get("/user")]
-pub async fn ui_user_page() -> HttpResponse {
+pub async fn ui_user_page(state: Data<AppState>) -> HttpResponse {
   HttpResponse::Ok()
     .content_type(ContentType::html())
-    .body(service::admin_page().await)
+    .body(service::admin_page(&state.site_url, &state.site_name, state.server_url.clone()).await)
 }
 
 #[get("/forgot")]
-pub async fn ui_forgot_page() -> HttpResponse {
+pub async fn ui_forgot_page(state: Data<AppState>) -> HttpResponse {
   HttpResponse::Ok()
     .content_type(ContentType::html())
-    .body(service::admin_page().await)
+    .body(service::admin_page(&state.site_url, &state.site_name, state.server_url.clone()).await)
 }
 
-pub async fn ui_page() -> HttpResponse {
+pub async fn ui_page(state: Data<AppState>) -> HttpResponse {
   HttpResponse::Ok()
     .content_type(ContentType::html())
-    .body(service::admin_page().await)
+    .body(service::admin_page(&state.site_url, &state.site_name, state.server_url.clone()).await)
 }

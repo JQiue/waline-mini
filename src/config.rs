@@ -88,7 +88,7 @@ pub struct EnvConfig {
   #[serde(default, deserialize_with = "deserialize_comma_separated")]
   pub forbidden_words: Vec<String>,
   #[serde(default, deserialize_with = "deserialize_comma_separated")]
-  pub secure_domians: Vec<String>,
+  pub secure_domains: Vec<String>,
   #[serde(default = "default_false")]
   pub disable_useragent: bool,
   #[serde(default = "default_false")]
@@ -96,6 +96,7 @@ pub struct EnvConfig {
   pub ip2region_db: Option<String>,
   #[serde(default = "default_oauth_url")]
   pub oauth_url: String,
+  pub server_url: Option<String>,
 }
 
 impl EnvConfig {

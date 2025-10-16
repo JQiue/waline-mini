@@ -6,14 +6,12 @@ use actix_web::{
 };
 use ammonia::url;
 use helpers::{hash, jwt, uuid::Alphabet};
-use migration::ExprTrait;
-use sea_orm::{ActiveValue::Set, IntoActiveModel, RelationDef};
+use sea_orm::{ActiveValue::Set, IntoActiveModel};
 use serde_json::json;
-use tracing_subscriber::fmt::format;
 
 use crate::{
   app::AppState,
-  components::user::{self, model::*, service},
+  components::user::{model::*, service},
   config::EnvConfig,
   entities::wl_users,
   error::AppError,
@@ -168,7 +166,7 @@ pub async fn modify_password(
 pub async fn oauth(query: Query<OAuthQuery>) -> Result<HttpResponse, AppError> {
   let Query(OAuthQuery {
     r#type,
-    redirect,
+    redirect: _,
     state,
   }) = query.clone();
 
