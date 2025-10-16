@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.12.0](https://github.com/JQiue/waline-rs/compare/v0.11.0..0.12.0) - 2025-10-16
+## [0.12.1](https://github.com/JQiue/waline-rs/compare/v0.12.0..0.12.1) - 2025-10-16
+
+### 🚜 Refactor
+
+- Refactor server URL handling in UI components and add get_server_url helper function - ([272b81a](https://github.com/JQiue/waline-rs/commit/272b81ae2e12fdfe7e832c666e31381a60a369fd))
+
+## [0.12.0](https://github.com/JQiue/waline-rs/compare/v0.11.0..v0.12.0) - 2025-10-16
 
 ### 🚀 Features
 
@@ -25,14 +31,12 @@ All notable changes to this project will be documented in this file.
 - Update deps - ([883298f](https://github.com/JQiue/waline-rs/commit/883298f87ff8ac88e2d71f4434f4491702e204b4))
 - Update README.md - ([75cff96](https://github.com/JQiue/waline-rs/commit/75cff964d2b9f0123ce296e1b24e9e9e15722a56))
 - Update Docker configuration and enhance README for improved deployment instructions - ([0b19c6b](https://github.com/JQiue/waline-rs/commit/0b19c6b748e6ff2266f2d80e7079e4c33cd52dc1))
+- Release waline-mini version 0.12.0 - ([926cd6f](https://github.com/JQiue/waline-rs/commit/926cd6f86c027eedac5a2334ec78da816ad5df71))
 
 ### Refacotr
 
 - Refactor code - ([dee3127](https://github.com/JQiue/waline-rs/commit/dee31273d2338d8de3562dd160cbbf3a8b2bbdd5))
 
-## ❤️ New Contributors
-
-* @JQiue made their first contribution
 ## [0.11.0](https://github.com/JQiue/waline-rs/compare/v0.10.0..v0.11.0) - 2025-02-26
 
 ### 🚀 Features
