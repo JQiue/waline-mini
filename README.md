@@ -7,7 +7,7 @@
 ![GitHub License](https://img.shields.io/github/license/JQiue/waline-mini)
 ![Code Lines](https://img.shields.io/endpoint?url=https://ghloc.vercel.app/api/JQiue/waline-mini/badge?filter=.rs$)
 ![Docker Image Size](https://img.shields.io/docker/image-size/jqiue/waline-mini)
-![Docker Image Version](https://img.shields.io/docker/v/jqiue/waline-mini)
+![Docker Image Version](https://img.shields.io/docker/v/jqiue/waline-mini?label=docker)
 
 English | [简体中文](./README.zh-CN.md)
 
