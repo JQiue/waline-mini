@@ -2,11 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.12.1](https://github.com/JQiue/waline-rs/compare/v0.12.0..0.12.1) - 2025-10-16
+## [0.13.0](https://github.com/JQiue/waline-rs/compare/v0.12.1..0.13.0) - 2025-11-03
+
+### 🚀 Features
+
+- Support postgresql backend - ([1050823](https://github.com/JQiue/waline-rs/commit/105082346b5d95c9bc54e53a5326587a163ccaea))
+
+### 📚 Documentation
+
+- Update docs - ([710b462](https://github.com/JQiue/waline-rs/commit/710b462e86305075d78fdbf996784e7651be6cd1))
+
+### ⚙️ Miscellaneous Tasks
+
+- Update README.md - ([3c35b51](https://github.com/JQiue/waline-rs/commit/3c35b51d4332127162cd15b005eb39ca231d416f))
+- Update README.md - ([194dfd5](https://github.com/JQiue/waline-rs/commit/194dfd5efa541cb49f06ebcbb70f3d0b5766eeb7))
+- Add a pipeline for building Docker images - ([dbd76e8](https://github.com/JQiue/waline-rs/commit/dbd76e84415d17e81cab97a46fb9928e82c42475))
+
+## ❤️ New Contributors
+
+* @JQiue made their first contribution
+## [0.12.1](https://github.com/JQiue/waline-rs/compare/v0.12.0..v0.12.1) - 2025-10-16
 
 ### 🚜 Refactor
 
 - Refactor server URL handling in UI components and add get_server_url helper function - ([272b81a](https://github.com/JQiue/waline-rs/commit/272b81ae2e12fdfe7e832c666e31381a60a369fd))
+
+### ⚙️ Miscellaneous Tasks
+
+- Release waline-mini version 0.12.1 - ([e5f1d09](https://github.com/JQiue/waline-rs/commit/e5f1d09a5ea64d019dd18640a5ceac35a86dcabd))
 
 ## [0.12.0](https://github.com/JQiue/waline-rs/compare/v0.11.0..v0.12.0) - 2025-10-16
 
