@@ -17,7 +17,7 @@ English | [简体中文](./README.zh-CN.md)
 
 Waline-mini is a high-performance Rust implementation of the Waline comment system, using 95% less memory than its Node.js counterpart and serving as an efficient alternative for resource-constrained servers.
 
-In my Ubuntu server, the waline-mini requires only about `5612Kb=5.48MB` of memory
+In my Ubuntu server, the waline-mini requires only about `5612Kb=5.48MB` of memory.
 
 ![mem](./assets/image.png)
 
@@ -65,6 +65,8 @@ export SITE_URL=your_site_url
 ./waline-mini
 ```
 
+> [Confused about using SQLite? Jump to FAQ](#faq)
+
 ### Docker
 
 ```yml
@@ -88,8 +90,6 @@ volumes:
     driver: local
 ```
 
-if you want to use other databases, you only need to add `-e DATABASE_URL` environment for coverage
-
 ### Shuttle
 
 waline-mini supports deployment on Shuttle by first cloning the `shuttle` branch to the local using the following command
@@ -104,9 +104,9 @@ Finally, in accordance with the [Shuttle](https://console.shuttle.dev/login) ste
 
 ### LeanCloud
 
-When LeanCloud is used to pull the warehouse directly for deployment, the branch needs to enter "leancloud"
+When LeanCloud is used to pull the warehouse directly for deployment, the branch needs to enter "leancloud".
 
-If SQLite is used as the data store, the environment variable `DATABASE_URL` should be filled with `sqlite://./waline.sqlite? mode=rw`. When deploying with LeanCloud, a new SQLite file is included each time, so it is important to export the data before redeployment and import the data after redeployment when upgrading the waline-mini for redeployment
+If SQLite is used as the data store, the environment variable `DATABASE_URL` should be filled with `sqlite://./waline.sqlite? mode=rw`. When deploying with LeanCloud, a new SQLite file is included each time, so it is important to export the data before redeployment and import the data after redeployment when upgrading the waline-mini for redeployment.
 
 ## Configuration
 
@@ -114,7 +114,7 @@ Configure waline-mini with environment variables:
 
 | Environment variable   | Description                                                                                                                                                                                 | Require | Default        |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------- |
-| DATABASE_URL           | SQLite and MySQL/MariaDB are supported. Compile features can be added to support PostgreSQL at any time. `protocol://username:password@host/database`                                       | ✅       | -              |
+| DATABASE_URL           | Supports SQLite, MySQL/MariaDB, and PostgreSQL. `protocol://username:password@host/database`                                       | ✅       | -              |
 | JWT_TOKEN              | A random string is used to generate the JWT Signature key                                                                                                                                   | ✅       | -              |
 | SITE_NAME              | Site name                                                                                                                                                                                   | ✅       | -              |
 | SITE_URL               | Site url                                                                                                                                                                                    | ✅       | -              |
@@ -145,12 +145,16 @@ Configure waline-mini with environment variables:
 
 ### How to migrate data from the original Waline?
 
-1. Export JSON from the original waline background administration page
-2. Import JSON on the waline-mini background administration page
+1. Export JSON from the original waline background administration page.
+2. Import JSON on the waline-mini background administration page.
 
-### Which databases are supported?
+### What databases are supported?
 
-SQLite and MySQL/MariaDB are supported. Compile features can be added to support PostgreSQL at any time
+Currently supports SQLite, MySQL/MariaDB, and PostgreSQL.
+
+### Do I need to install SQLite package or start a service?
+
+No! SQLite is an embedded database, and waline-mini has statically linked the SQLite driver (via Sea-ORM and sqlx). Just set `DATABASE_URL=sqlite://./waline.sqlite?mode=rwc` (where `./waline.sqlite` is your data file path), and run `./waline-mini`. The data file will be automatically created at the specified path, without needing to install or configure any additional services.
 
 ## References
 

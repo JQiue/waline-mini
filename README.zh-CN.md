@@ -65,6 +65,8 @@ export SITE_URL=your_site_url
 ./waline-mini
 ```
 
+> [对使用 SQLite 感到疑惑？跳转到常见问题](#常见问题)
+
 ### Docker
 
 ```yml
@@ -87,8 +89,6 @@ volumes:
   waline-db:
     driver: local
 ```
-
-如果想使用别的数据库只需要添加`-e DATABASE_URL`环境进行覆盖即可
 
 ### Shuttle
 
@@ -116,7 +116,7 @@ git clone -b shuttle https://github.com/JQiue/waline-mini.git
 
 | 环境变量               | 描述                                                                                                                        | 是否需要 | 默认值         |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------- | -------------- |
-| DATABASE_URL           | SQLite and MySQL/MariaDB 是支持的，随时可以添加编译特性对 PostgreSQL 进行支持。`protocol://username:password@host/database` | ✅        | -              |
+| DATABASE_URL           | SQLite，MySQL/MariaDB，PostgreSQL 是支持的。`protocol://username:password@host/database` | ✅        | -              |
 | JWT_TOKEN              | 使用一个随机字符串来生成 JWT 签名密钥 key                                                                                   | ✅        | -              |
 | SITE_NAME              | 网站名称                                                                                                                    | ✅        | -              |
 | SITE_URL               | 网站地址                                                                                                                    | ✅        | -              |
@@ -152,7 +152,11 @@ git clone -b shuttle https://github.com/JQiue/waline-mini.git
 
 ### 支持哪些数据库？
 
-目前支持 SQLite 和 MySQL/MariaDB，可以通过添加编译特性支持 PostgreSQL
+当前支持 SQLite，MySQL/MariaDB，PostgreSQL
+
+### 使用 SQLite 时，需要安装 SQLite 包或启动服务吗？
+
+不需要！SQLite 是嵌入式数据库，waline-mini 已静态链接了 SQLite 驱动（通过 Sea-ORM 和 sqlx）。只需设置 `DATABASE_URL=sqlite://./waline.sqlite?mode=rwc`（其中 `./waline.sqlite` 是你的数据文件路径），运行 `./waline-mini` 即可。数据文件会自动创建在指定路径，无需额外安装或配置服务
 
 ## 参考
 
