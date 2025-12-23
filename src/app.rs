@@ -16,17 +16,14 @@ use crate::{
   config::EnvConfig,
   error::AppError,
   helpers::ip::Ip2Region,
-  middlewares::SecureDomians,
+  middlewares::SecureDomains,
   migration::migrate,
   repository::RepositoryManager,
 };
 
 use actix_cors::Cors;
 use actix_web::{
-  App, HttpMessage, HttpRequest, HttpResponse, HttpServer,
-  dev::Service,
-  http::header::USER_AGENT,
-  middleware,
+  App, HttpMessage, HttpRequest, HttpResponse, HttpServer, middleware,
   web::{self, ServiceConfig},
 };
 use serde_json::Value;
@@ -187,16 +184,7 @@ pub async fn start() -> Result<(), AppError> {
   Ok(
     HttpServer::new(move || {
       App::new()
-        .wrap_fn(|req, srv| {
-          if let Some(host_header) = req.headers().get(USER_AGENT) {
-            if let Ok(host_value) = host_header.to_str() {
-              req.extensions_mut().insert(host_value.to_string());
-            }
-          }
-          let fut = srv.call(req);
-          async { fut.await }
-        })
-        .wrap(SecureDomians::new(secure_domains.clone()))
+        .wrap(SecureDomains::new(secure_domains.clone()))
         .wrap(middleware::Logger::default())
         .wrap(Cors::permissive())
         .app_data(web::Data::new(state.clone()))

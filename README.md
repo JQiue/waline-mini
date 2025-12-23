@@ -42,7 +42,7 @@ In my Ubuntu server, the waline-mini requires only about `5612Kb=5.48MB` of memo
 | Security: Comment Review     | Fully        | Stable      |
 | Security: Anti-spam comments | Fully        | Stable      |
 | Security: Forbidden words    | Fully        | Stable      |
-| Security: Secure domians     | Fully        | Stable      |
+| Security: Secure domains     | Fully        | Stable      |
 | Security: Disallow IP List   | Fully        | Stable      |
 | OAuth                        | Fully        | Stable      |
 | Data migration               | Fully        | Stable      |
@@ -135,7 +135,7 @@ Configure waline-mini with environment variables:
 | LOGIN                  | User need login before comment when `LOGIN=force`                                                                                                                                           |         | `false`        |
 | FORBIDDEN_WORDS        | If a comment match forbidden word, it will be marked as spam                                                                                                                                |         |                |
 | DISALLOW_IP_LIST       | If a comment ip match this list, 403 status code is returned. such as `8.8.8.8,3.3.3.3`                                                                                                     |         |                |
-| SECURE_DOMIANS         | Secure domain settings. Requests from other domain will receive 403 status code. It supports String, Regexp, and Array type. Leaving this config means that all domain referrer are allowed |         |                |
+| SECURE_DOMAINS         | Secure domain settings. Requests from other domain will receive 403 status code. It supports String, Regexp, and Array type. Leaving this config means that all domain referrer are allowed |         |                |
 | DISABLE_AUTHORE_NOTIFY | wether disable author notification                                                                                                                                                          |         | `false`        |
 | DISABLE_REGION         | wether hide commenter's region. Default value is false                                                                                                                                      |         | `false`        |
 | DISABLE_USERAGENT      | wether hide the user agent of commenter. Default value is false                                                                                                                             |         | `false`        |

@@ -10,17 +10,17 @@ use futures_util::{FutureExt as _, TryFutureExt as _, future::LocalBoxFuture};
 use crate::helpers::header::{extract_origin, extract_referer};
 
 #[derive(Clone, Debug)]
-pub struct SecureDomians {
-  secure_domians: Vec<String>,
+pub struct SecureDomains {
+  secure_domains: Vec<String>,
 }
 
-impl SecureDomians {
-  pub fn new(secure_domians: Vec<String>) -> Self {
-    Self { secure_domians }
+impl SecureDomains {
+  pub fn new(secure_domains: Vec<String>) -> Self {
+    Self { secure_domains }
   }
 }
 
-impl<S, B> Transform<S, ServiceRequest> for SecureDomians
+impl<S, B> Transform<S, ServiceRequest> for SecureDomains
 where
   S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error>,
   S::Future: 'static,
@@ -28,35 +28,35 @@ where
 {
   type Response = ServiceResponse<EitherBody<B>>;
   type Error = Error;
-  type Transform = SecureDomiansService<S>;
+  type Transform = SecureDomainsService<S>;
   type InitError = ();
   type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
   fn new_transform(&self, service: S) -> Self::Future {
-    ready(Ok(SecureDomiansService {
+    ready(Ok(SecureDomainsService {
       service,
-      secure_domians: self.secure_domians.clone(),
+      secure_domains: self.secure_domains.clone(),
     }))
   }
 }
 
 #[doc(hidden)]
-pub struct SecureDomiansService<S> {
+pub struct SecureDomainsService<S> {
   service: S,
-  secure_domians: Vec<String>,
+  secure_domains: Vec<String>,
 }
 
-impl<S> SecureDomiansService<S> {
-  fn check_domian(&self, domian: String) -> bool {
-    if self.secure_domians.is_empty() {
+impl<S> SecureDomainsService<S> {
+  fn check_domain(&self, domain: String) -> bool {
+    if self.secure_domains.is_empty() {
       return true;
     }
-    let v: Vec<&str> = domian.split(":").collect();
-    self.secure_domians.contains(&v[0].to_string())
+    let v: Vec<&str> = domain.split(":").collect();
+    self.secure_domains.contains(&v[0].to_string())
   }
 }
 
-impl<S, B> Service<ServiceRequest> for SecureDomiansService<S>
+impl<S, B> Service<ServiceRequest> for SecureDomainsService<S>
 where
   S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
   S::Future: 'static,
@@ -74,7 +74,7 @@ where
     } else {
       extract_origin(req.request())
     };
-    if !self.check_domian(checking) {
+    if !self.check_domain(checking) {
       return Box::pin(async {
         Ok(req.into_response(HttpResponse::Forbidden().finish().map_into_right_body()))
       });

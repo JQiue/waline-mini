@@ -51,7 +51,7 @@ async fn get_comment_info(
     if fields.is_err() {
       return Response::<()>::new_error(AppError::Error, Some(&lang));
     }
-    let token = extract_token(&req).unwrap();
+    let token = extract_token(&req)?;
     let email = match jwt::verify::<String>(&token, &state.jwt_token) {
       Ok(token_data) => token_data.claims.data,
       Err(err) => return Response::<()>::new_error(err.into(), Some(&lang)),
@@ -79,7 +79,7 @@ async fn create_comment(
   state: Data<AppState>,
   query: Query<CreateCommentQuery>,
   body: Json<CreateCommentBody>,
-) -> HttpResponse {
+) -> Result<HttpResponse, AppError> {
   let Query(CreateCommentQuery { lang }) = query;
   let Json(CreateCommentBody {
     comment,
@@ -115,29 +115,33 @@ async fn create_comment(
       }
       Err(err) => {
         tracing::error!("{}", err);
-        return HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang)));
+        return Ok(
+          HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang))),
+        );
       }
     },
     _ => {
       if &state.login == "force" {
-        return HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang)));
+        return Ok(
+          HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, Some(&lang))),
+        );
       }
       state.rate_limiter.check_and_update(&client_ip, 1)
     }
   };
   if !pass {
-    return HttpResponse::Ok().json(Response::<()>::error(
+    return Ok(HttpResponse::Ok().json(Response::<()>::error(
       AppError::FrequencyLimited,
       Some(&lang),
-    ));
+    )));
   }
   if !is_admin {
     let EnvConfig {
       disallow_ip_list, ..
-    } = EnvConfig::load_env().unwrap();
+    } = EnvConfig::load_env()?;
     if disallow_ip_list.contains(&client_ip) {
       tracing::info!("Comment IP {client_ip} is in disallowIPList");
-      return HttpResponse::Ok().json(Response::<()>::error(AppError::Forbidden, Some(&lang)));
+      return Ok(HttpResponse::Ok().json(Response::<()>::error(AppError::Forbidden, Some(&lang))));
     }
   }
   if state
@@ -148,10 +152,10 @@ async fn create_comment(
     .unwrap()
     && !is_admin
   {
-    return HttpResponse::Ok().json(Response::<()>::error(
+    return Ok(HttpResponse::Ok().json(Response::<()>::error(
       AppError::DuplicateContent,
       Some(&lang),
-    ));
+    )));
   }
   match service::create_comment(
     &state,
@@ -170,8 +174,8 @@ async fn create_comment(
   )
   .await
   {
-    Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
-    Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang))),
+    Ok(data) => Ok(HttpResponse::Ok().json(Response::success(Some(data)))),
+    Err(err) => Ok(HttpResponse::Ok().json(Response::<()>::error(err, Some(&lang)))),
   }
 }
 
