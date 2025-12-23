@@ -183,10 +183,9 @@ pub async fn delete_comment(
 ) -> Result<HttpResponse, AppError> {
   let id = path.into_inner();
   let token = extract_token(&req)?;
-  match service::delete_comment(&state, id, token).await {
-    Ok(_) => Response::<()>::new_success(None),
-    Err(err) => Response::<()>::new_error(err, None),
-  }
+  service::delete_comment(&state, id, token)
+    .await
+    .into_http_response(None)
 }
 
 #[put("/comment/{id}")]
@@ -195,63 +194,17 @@ async fn update_comment(
   state: Data<AppState>,
   path: Path<u32>,
   body: Json<UpdateCommentBody>,
-) -> HttpResponse {
-  let actix_web::web::Json(UpdateCommentBody {
-    status,
-    like,
-    comment,
-    link,
-    mail,
-    nick,
-    ua,
-    url,
-    sticky,
-  }) = body;
+) -> Result<HttpResponse, AppError> {
+  let Json(UpdateCommentBody { like, .. }) = body;
   let id: u32 = path.into_inner();
   if like.is_some() {
-    match service::update_comment(
-      &state,
-      String::new(),
-      id,
-      status,
-      like,
-      comment,
-      link,
-      mail,
-      nick,
-      ua,
-      url,
-      sticky,
-    )
-    .await
-    {
-      Ok(data) => return HttpResponse::Ok().json(Response::success(Some(data))),
-      Err(err) => return HttpResponse::Ok().json(Response::<()>::error(err, None)),
-    }
-  }
-  match extract_token(&req) {
-    Ok(token) => match jwt::verify::<String>(&token, &state.jwt_token) {
-      Ok(data) => match service::update_comment(
-        &state,
-        data.claims.data,
-        id,
-        status,
-        like,
-        comment,
-        link,
-        mail,
-        nick,
-        ua,
-        url,
-        sticky,
-      )
+    return service::update_comment(&state, String::new(), id, body.0)
       .await
-      {
-        Ok(data) => HttpResponse::Ok().json(Response::success(Some(data))),
-        Err(err) => HttpResponse::Ok().json(Response::<()>::error(err, None)),
-      },
-      Err(_) => HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None)),
-    },
-    _ => HttpResponse::Ok().json(Response::<()>::error(AppError::Unauthorized, None)),
+      .into_http_response(None);
   }
+  let token = extract_token(&req)?;
+  let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
+  service::update_comment(&state, email, id, body.0)
+    .await
+    .into_http_response(None)
 }

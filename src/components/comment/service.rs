@@ -35,18 +35,16 @@ pub async fn get_comment_info(
   }
 
   let mut is_admin = false;
-  if let Ok(token) = token {
-    if let Ok(email) = jwt::verify::<String>(&token, &state.jwt_token).map(|t| t.claims.data) {
-      if state
-        .repo
-        .user()
-        .is_admin_user(&email)
-        .await
-        .unwrap_or(false)
-      {
-        is_admin = true;
-      }
-    }
+  if let Ok(token) = token
+    && let Ok(email) = jwt::verify::<String>(&token, &state.jwt_token).map(|t| t.claims.data)
+    && state
+      .repo
+      .user()
+      .is_admin_user(&email)
+      .await
+      .unwrap_or(false)
+  {
+    is_admin = true;
   }
   let (
     ItemsAndPagesNumber {
@@ -198,11 +196,11 @@ pub async fn get_comment_info_by_admin(
       state.disable_useragent,
       state.disable_region,
     );
-    if let Some(user_id) = data_entry.user_id {
-      if let Some(user) = state.repo.user().get_user_by_id(user_id as u32).await? {
-        data_entry.label = user.label;
-        data_entry.r#type = Some(user.user_type);
-      }
+    if let Some(user_id) = data_entry.user_id
+      && let Some(user) = state.repo.user().get_user_by_id(user_id as u32).await?
+    {
+      data_entry.label = user.label;
+      data_entry.r#type = Some(user.user_type);
     }
     data.push(data_entry);
   }
@@ -216,7 +214,7 @@ pub async fn get_comment_info_by_admin(
   }))
 }
 
-pub async fn create_comment<'a>(
+pub async fn create_comment(
   state: &AppState,
   comment: String,
   link: Option<String>,
@@ -230,7 +228,7 @@ pub async fn create_comment<'a>(
   ip: String,
   user_type: UserType,
   lang: String,
-) -> Result<Value, AppError> {
+) -> ServiceResult<Value> {
   state.comment_cache.lock().unwrap().invalidate(&url);
   let html_output = render_md_to_html(&comment);
   let mut avatar = get_avatar("");
@@ -366,16 +364,19 @@ pub async fn update_comment(
   state: &AppState,
   email: String,
   id: u32,
-  status: Option<String>,
-  like: Option<bool>,
-  comment: Option<String>,
-  link: Option<String>,
-  mail: Option<String>,
-  nick: Option<String>,
-  ua: Option<String>,
-  url: Option<String>,
-  sticky: Option<i8>,
+  body: UpdateCommentBody,
 ) -> ServiceResult<Value> {
+  let UpdateCommentBody {
+    status,
+    like,
+    comment,
+    link,
+    mail,
+    nick,
+    ua,
+    url,
+    sticky,
+  } = body;
   let mut active_comment = wl_comment::ActiveModel {
     id: Set(id),
     updated_at: Set(Some(time::utc_now())),

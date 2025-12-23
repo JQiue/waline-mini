@@ -18,15 +18,15 @@ impl RepositoryManager {
     Self { db }
   }
 
-  pub fn user(&self) -> UserRepository {
+  pub fn user(&self) -> UserRepository<'_> {
     UserRepository { db: &self.db }
   }
 
-  pub fn comment(&self) -> CommentRepository {
+  pub fn comment(&self) -> CommentRepository<'_> {
     CommentRepository { db: &self.db }
   }
 
-  pub fn counter(&self) -> CounterRepository {
+  pub fn counter(&self) -> CounterRepository<'_> {
     CounterRepository { db: &self.db }
   }
 }

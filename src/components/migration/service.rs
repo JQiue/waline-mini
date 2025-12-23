@@ -1,36 +1,34 @@
-use crate::components::migration::model::CommentData;
+use crate::components::migration::model::{CommentData, CreateDataBody, UpdateDataBody};
 
 use crate::traits::LoggingResultErr;
+use crate::types::ServiceResult;
 use crate::{
   app::AppState,
   entities::{wl_comment, wl_counter, wl_users},
   prelude::AppError,
 };
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 use serde_json::{Value, json};
 
 use super::model::{CounterData, UserData};
 
-pub async fn export_data(state: &AppState, _lang: String) -> Result<Value, String> {
+pub async fn export_data(state: &AppState) -> ServiceResult<Value> {
   let comments = wl_comment::Entity::find()
     .into_partial_model::<CommentData>()
     .all(&state.repo.db)
     .await
-    .log_err()
-    .unwrap();
+    .log_err()?;
   let counters = wl_counter::Entity::find()
     .into_partial_model::<CounterData>()
     .all(&state.repo.db)
     .await
-    .log_err()
-    .unwrap();
+    .log_err()?;
   let users = wl_users::Entity::find()
     .into_partial_model::<UserData>()
     .all(&state.repo.db)
     .await
-    .log_err()
-    .unwrap();
+    .log_err()?;
   Ok(json!({
       "type": "waline",
       "version": 1,
@@ -44,20 +42,22 @@ pub async fn export_data(state: &AppState, _lang: String) -> Result<Value, Strin
   }))
 }
 
-pub async fn create_comment_data(
-  state: &AppState,
-  comment: Option<String>,
-  ip: Option<String>,
-  link: Option<String>,
-  mail: Option<String>,
-  nick: Option<String>,
-  status: Option<String>,
-  ua: Option<String>,
-  url: Option<String>,
-  created_at: Option<chrono::DateTime<Utc>>,
-  updated_at: Option<chrono::DateTime<Utc>>,
-  inserted_at: Option<chrono::DateTime<Utc>>,
-) -> Result<Value, AppError> {
+pub async fn create_comment_data(state: &AppState, body: CreateDataBody) -> ServiceResult<Value> {
+  let CreateDataBody {
+    comment,
+    ip,
+    link,
+    mail,
+    nick,
+    status,
+    ua,
+    url,
+    inserted_at,
+    created_at,
+    updated_at,
+    ..
+  } = body;
+
   let comment = wl_comment::ActiveModel {
     comment: Set(comment),
     inserted_at: Set(inserted_at),
@@ -92,20 +92,24 @@ pub async fn create_comment_data(
 
 pub async fn create_counter_data(
   state: &AppState,
-  time: Option<i32>,
-  url: Option<String>,
-  reaction0: Option<i32>,
-  reaction1: Option<i32>,
-  reaction2: Option<i32>,
-  reaction3: Option<i32>,
-  reaction4: Option<i32>,
-  reaction5: Option<i32>,
-  reaction6: Option<i32>,
-  reaction7: Option<i32>,
-  reaction8: Option<i32>,
-  created_at: Option<chrono::DateTime<Utc>>,
-  updated_at: Option<chrono::DateTime<Utc>>,
-) -> Result<wl_counter::Model, AppError> {
+  body: CreateDataBody,
+) -> ServiceResult<wl_counter::Model> {
+  let CreateDataBody {
+    url,
+    created_at,
+    updated_at,
+    time,
+    reaction0,
+    reaction1,
+    reaction2,
+    reaction3,
+    reaction4,
+    reaction5,
+    reaction6,
+    reaction7,
+    reaction8,
+    ..
+  } = body;
   Ok(
     wl_counter::ActiveModel {
       time: Set(time),
@@ -131,9 +135,9 @@ pub async fn create_counter_data(
 pub async fn update_comment_data(
   state: &AppState,
   object_id: u32,
-  pid: Option<i32>,
-  rid: Option<i32>,
-) -> Result<bool, AppError> {
+  body: UpdateDataBody,
+) -> ServiceResult<bool> {
+  let UpdateDataBody { pid, rid, .. } = body;
   let mut active_comment = state
     .repo
     .comment()
@@ -147,19 +151,20 @@ pub async fn update_comment_data(
   Ok(true)
 }
 
-pub async fn create_user_data(
-  state: &AppState,
-  _object_id: Option<u32>,
-  display_name: Option<String>,
-  password: Option<String>,
-  email: Option<String>,
-  r#type: Option<String>,
-  label: Option<String>,
-  url: Option<String>,
-  two_factor_auth: Option<String>,
-  created_at: Option<DateTime<Utc>>,
-  updated_at: Option<DateTime<Utc>>,
-) -> Result<bool, String> {
+pub async fn create_user_data(state: &AppState, body: CreateDataBody) -> ServiceResult<bool> {
+  let CreateDataBody {
+    url,
+    created_at,
+    updated_at,
+    two_factor_auth,
+    display_name,
+    email,
+    label,
+    password,
+    r#type,
+    ..
+  } = body;
+
   let model = wl_users::ActiveModel {
     display_name: Set(display_name.unwrap()),
     email: Set(email.unwrap()),
@@ -174,23 +179,24 @@ pub async fn create_user_data(
   };
   match wl_users::Entity::insert(model).exec(&state.repo.db).await {
     Ok(_) => Ok(true),
-    Err(err) => Err(err.to_string()),
+    Err(err) => Err(err.into()),
   }
 }
 
-pub async fn update_user_data(
-  state: &AppState,
-  _object_id: Option<u32>,
-  display_name: Option<String>,
-  password: Option<String>,
-  email: Option<String>,
-  url: Option<String>,
-  label: Option<String>,
-  r#type: Option<String>,
-  two_factor_auth: Option<String>,
-  created_at: Option<DateTime<Utc>>,
-  updated_at: Option<DateTime<Utc>>,
-) -> Result<(), AppError> {
+pub async fn update_user_data(state: &AppState, body: UpdateDataBody) -> Result<(), AppError> {
+  let UpdateDataBody {
+    two_factor_auth,
+    display_name,
+    email,
+    label,
+    password,
+    r#type,
+    url,
+    created_at,
+    updated_at,
+    ..
+  } = body;
+
   if state
     .repo
     .user()

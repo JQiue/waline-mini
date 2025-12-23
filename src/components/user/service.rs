@@ -43,11 +43,7 @@ pub async fn user_register(
     ..
   } = EnvConfig::load_env()?;
 
-  let has_email_service = if smtp_host.is_some() || smtp_service.is_some() {
-    true
-  } else {
-    false
-  };
+  let has_email_service = smtp_host.is_some() || smtp_service.is_some();
   let token = uuid::nanoid(&Alphabet::NUMBERS, 4);
   let mut normal_user_type = if has_email_service {
     format!(
@@ -142,14 +138,14 @@ pub async fn user_login(state: &AppState, body: UserLoginBody) -> ServiceResult<
   if !password_valid {
     return Err(AppError::Error);
   }
-  if let Some(secret) = user.two_factor_auth.clone() {
-    if secret.len() == 32 {
-      let mut totp = TOTP::default();
-      let raw = Secret::Encoded(secret).to_raw()?;
-      totp.secret = raw.to_bytes()?;
-      if !totp.check_current(&code)? {
-        return Err(AppError::TwoFactorAuth);
-      }
+  if let Some(secret) = user.two_factor_auth.clone()
+    && secret.len() == 32
+  {
+    let mut totp = TOTP::default();
+    let raw = Secret::Encoded(secret).to_raw()?;
+    totp.secret = raw.to_bytes()?;
+    if !totp.check_current(&code)? {
+      return Err(AppError::TwoFactorAuth);
     }
   }
   let token = jwt::sign(email, &state.jwt_token, 2592000)?;
@@ -419,13 +415,13 @@ pub async fn get_2fa(
     .ok_or(AppError::Error)?;
   let name = format!("waline_{}", user.id);
 
-  if let Some(secret) = user.two_factor_auth {
-    if secret.len() == 32 {
-      return Ok(json!({
-        "otpauth_url": format!("otpauth://totp/{name}?secret={}", secret),
-        "secret": secret,
-      }));
-    }
+  if let Some(secret) = user.two_factor_auth
+    && secret.len() == 32
+  {
+    return Ok(json!({
+      "otpauth_url": format!("otpauth://totp/{name}?secret={}", secret),
+      "secret": secret,
+    }));
   }
 
   let raw = Secret::generate_secret();

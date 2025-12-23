@@ -177,7 +177,7 @@ pub async fn oauth(req: HttpRequest, query: Query<OAuthQuery>) -> Result<HttpRes
   let mut oauth_params = url::form_urlencoded::Serializer::new(String::new());
   redirect_url_params.append_pair("type", &r#type);
   if let Some(state) = state
-    && state.len() != 0
+    && !state.is_empty()
   {
     oauth_params.append_pair("state", &state);
   };
@@ -189,11 +189,11 @@ pub async fn oauth(req: HttpRequest, query: Query<OAuthQuery>) -> Result<HttpRes
   println!("redirect_url={}", redirect_url);
   oauth_params.append_pair("redirect", &redirect_url);
   let oauth_url = format!("{oauth_url}/{}?{}", r#type, oauth_params.finish());
-  return Ok(
+  Ok(
     HttpResponse::Found()
       .append_header((http::header::LOCATION, oauth_url))
       .finish(),
-  );
+  )
 }
 
 #[get("/oauth/callback")]
@@ -211,7 +211,7 @@ pub async fn oauth_callback(
 
   let EnvConfig { oauth_url, .. } = EnvConfig::load_env()?;
   // 已经拥有了 code 或者 X 平台必须的：oauth_token 和 oauth_verifier
-  let params = json!({
+  let _params = json!({
     "code": code,
     "oauth_token": oauth_token,
     "oauth_verifier": oauth_verifier,
@@ -253,7 +253,7 @@ pub async fn oauth_callback(
 
   // 如果携带了 state，意味着是个关联操作
   if let Some(token) = token
-    && token != ""
+    && !token.is_empty()
   {
     let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
     let user_by_current: Option<wl_users::Model> =
@@ -331,9 +331,9 @@ pub async fn oauth_callback(
   let token = jwt::sign(user_by_oauth.email, &state.jwt_token, 2592000)?;
   let redirect_url = format!("/ui/profile?token={token}");
 
-  return Ok(
+  Ok(
     HttpResponse::Found()
       .append_header((http::header::LOCATION, redirect_url))
       .finish(),
-  );
+  )
 }

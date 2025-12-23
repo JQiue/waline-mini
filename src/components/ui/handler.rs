@@ -49,16 +49,15 @@ pub async fn ui_login_page(
   query: Query<UiLoginPageQeury>,
 ) -> Result<HttpResponse, AppError> {
   let server_url = get_server_url(&req)?;
-  if let Ok(token) = extract_token(&req) {
-    if let Ok(_) = jwt::verify::<String>(&token, &state.jwt_token)
-      && let Some(redirect) = query.0.redirect
-    {
-      return Ok(
-        HttpResponse::Found()
-          .append_header((http::header::LOCATION, redirect))
-          .finish(),
-      );
-    }
+  if let Ok(token) = extract_token(&req)
+    && let Ok(_) = jwt::verify::<String>(&token, &state.jwt_token)
+    && let Some(redirect) = query.0.redirect
+  {
+    return Ok(
+      HttpResponse::Found()
+        .append_header((http::header::LOCATION, redirect))
+        .finish(),
+    );
   }
 
   Ok(

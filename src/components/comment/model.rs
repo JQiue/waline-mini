@@ -1,10 +1,16 @@
+use actix_web::HttpRequest;
+use helpers::jwt;
 use sea_orm::Set;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
+  app::AppState,
   entities::wl_comment,
-  helpers::{avatar::get_avatar, ip::Ip2Region, markdown::render_md_to_html, ua},
+  error::AppError,
+  helpers::{
+    avatar::get_avatar, header::extract_token, ip::Ip2Region, markdown::render_md_to_html, ua,
+  },
 };
 
 #[derive(Serialize, Clone)]
@@ -219,6 +225,7 @@ pub fn has_forbidden_word(comment: &str, forbidden_words: &Vec<String>) -> bool 
   false
 }
 
+#[derive(PartialEq)]
 pub enum UserType {
   Anonymous,
   Guest(String),
@@ -263,3 +270,49 @@ pub struct UpdateCommentBody {
   pub url: Option<String>,
   pub sticky: Option<i8>,
 }
+
+pub async fn _authenticate_user(
+  req: &HttpRequest,
+  state: &AppState,
+  _client_ip: String,
+  _lang: &String,
+) -> Result<(UserType, bool), AppError> {
+  let user_type;
+  let is_admin;
+  match extract_token(req) {
+    Ok(token) => {
+      let email = jwt::verify::<String>(&token, &state.jwt_token)?.claims.data;
+      if !state.repo.user().has_user_by_email(&email).await? {
+        return Err(AppError::UserNotFound);
+      }
+      if state.repo.user().is_admin_user(&email).await? {
+        is_admin = true;
+        user_type = UserType::Administrator(email);
+      } else {
+        is_admin = false;
+        user_type = UserType::Guest(email);
+      }
+    }
+    Err(_) => {
+      user_type = UserType::Anonymous;
+      is_admin = false;
+    }
+  }
+  Ok((user_type, is_admin))
+}
+
+// pub async fn check_rate_limit_and_ip(
+//   state: &AppState,
+//   client_ip: String,
+//   is_admin: bool,
+//   lang: &String,
+// ) -> Result<(), AppError> {
+// }
+
+// pub async fn check_duplicate_comment(
+//   state: &AppState,
+//   body: String,
+//   is_admin: bool,
+//   lang: &String,
+// ) -> Result<(), AppError> {
+// }
